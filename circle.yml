@@ -1,0 +1,22 @@
+machine:
+  services:
+    - docker
+dependencies:
+  cache_directories:
+    - "~/docker"
+  override:
+    - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
+    - sudo docker build -f postgres.Dockerfile -t postgres-ip4r .
+    - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+    - "docker tag postgres-ip4r ${DOCKERHUB_REPO}:latest"
+    - "docker push ${DOCKERHUB_REPO}:latest"
+    - mkdir -p ~/docker; docker save ${DOCKERHUB_REPO} > ~/docker/image.tar
+database:
+  override:
+    - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
+    - sudo service postgresql stop
+    - sudo docker run --name postgres -p 127.0.0.1:5432:5432 -d postgres-ip4r
+    - chmod +x ./wait-for-it.sh
+    - ./wait-for-it.sh 127.0.0.1:5432
+    - echo "CREATE ROLE tigerblood WITH LOGIN; CREATE DATABASE tigerblood; GRANT ALL PRIVILEGES ON DATABASE tigerblood TO tigerblood;" | psql -h 127.0.0.1 -U postgres
+    - echo "CREATE EXTENSION ip4r;" | psql -h 127.0.0.1 -U postgres tigerblood
