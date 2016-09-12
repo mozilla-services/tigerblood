@@ -9,6 +9,7 @@ import (
 // DB is a DB instance for running queries against the tigerblood database
 type DB struct {
 	*sql.DB
+	reputationSelectStmt *sql.Stmt
 }
 
 type ReputationEntry struct {
@@ -27,9 +28,16 @@ func NewDB(dsn string) (*DB, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(100)
-	return &DB{
+	newDB := &DB{
 		DB: db,
-	}, nil
+	}
+	newDB.CreateTables()
+	reputationSelectStmt, err := db.Prepare("SELECT ip, reputation FROM reputation WHERE ip >>= $1 ORDER BY @ ip LIMIT 1;")
+	if err != nil {
+		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
+	}
+	newDB.reputationSelectStmt = reputationSelectStmt
+	return newDB, nil
 }
 
 const createReputationTableSQL = `
@@ -43,6 +51,15 @@ CREATE INDEX IF NOT EXISTS reputation_ip_idx ON reputation USING gist (ip);
 const emptyReputationTableSQL = `
 TRUNCATE TABLE reputation;
 `
+
+// Close closes the database
+func (db DB) Close() error {
+	err := db.reputationSelectStmt.Close()
+	if err != nil {
+		return err
+	}
+	return db.DB.Close()
+}
 
 // CreateTables creates all the tables tigerblood needs, if they don't exist already
 func (db DB) CreateTables() error {
@@ -73,8 +90,9 @@ func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) er
 	return err
 }
 
+// SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.
 func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	var entry ReputationEntry
-	err := db.QueryRow("SELECT ip, reputation FROM reputation WHERE ip >>= $1 ORDER BY @ ip LIMIT 1;", ip).Scan(&entry.IP, &entry.Reputation)
+	err := db.reputationSelectStmt.QueryRow(ip).Scan(&entry.IP, &entry.Reputation)
 	return entry, err
 }
