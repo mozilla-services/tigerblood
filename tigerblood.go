@@ -46,18 +46,18 @@ func ReadReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 	if err != nil {
 		// This means there was no IP address found in the path
 		w.WriteHeader(http.StatusBadRequest)
-		log.Println(err)
+		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
 	entry, err := db.SelectSmallestMatchingSubnet(ip)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Panic(err)
+		log.Printf("Error executing SQL: %s", err)
 	}
 	json, err := json.Marshal(entry)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
+		log.Printf("Error marshaling JSON: %s", err)
 	}
 	w.Write(json)
 }
