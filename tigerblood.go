@@ -1,6 +1,7 @@
 package tigerblood
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -50,7 +51,10 @@ func ReadReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 		return
 	}
 	entry, err := db.SelectSmallestMatchingSubnet(ip)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		w.WriteHeader(http.StatusNotFound)
+		log.Printf("No entries found for IP %s", ip)
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error executing SQL: %s", err)
 	}

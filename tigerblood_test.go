@@ -78,3 +78,19 @@ func TestReadReputationValidIP(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 	assert.Nil(t, err)
 }
+
+func TestReadReputationNoEntry(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
+		IP:         "127.0.0.0/8",
+		Reputation: 50,
+	})
+	assert.Nil(t, err)
+	ReadReputation(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil), db)
+	assert.Equal(t, 404, recorder.Code)
+	assert.Nil(t, err)
+}
