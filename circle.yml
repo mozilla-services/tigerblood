@@ -1,6 +1,14 @@
 machine:
   services:
     - docker
+  post:
+    - mkdir -p download
+    - test -e download/$GODIST || curl -o download/$GODIST https://storage.googleapis.com/golang/$GODIST
+    - sudo rm -rf /usr/local/go
+    - sudo tar -C /usr/local -xzf download/$GODIST
+  environment:
+    GODIST: "go1.7.linux-amd64.tar.gz"
+    TIGERBLOOD_DSN: "user=tigerblood dbname=tigerblood sslmode=disable"
 dependencies:
   cache_directories:
     - "~/docker"
@@ -22,4 +30,6 @@ database:
     - echo "CREATE EXTENSION ip4r;" | psql -h 127.0.0.1 -U postgres tigerblood
 test:
   override:
-    - go test . -bench=.
+    - go test . -bench=. -coverprofile=coverage.txt -covermode=atomic
+  post:
+    - bash <(curl -s https://codecov.io/bash)
