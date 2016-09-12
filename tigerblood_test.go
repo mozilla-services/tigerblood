@@ -69,8 +69,12 @@ func TestReadReputationValidIP(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	err = db.CreateTables()
+	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
+		IP:         "127.0.0.0/8",
+		Reputation: 50,
+	})
 	assert.Nil(t, err)
 	ReadReputation(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil), db)
 	assert.Equal(t, 200, recorder.Code)
+	assert.Nil(t, err)
 }
