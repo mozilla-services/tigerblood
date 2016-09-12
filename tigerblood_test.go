@@ -2,6 +2,8 @@ package tigerblood
 
 import (
 	"github.com/stretchr/testify/assert"
+	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -47,4 +49,28 @@ func TestIPAddressFromHTTPPath(t *testing.T) {
 		}
 		assert.Equal(t, c.ip, ip)
 	}
+}
+
+func TestReadReputationInvalidIP(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	err = db.CreateTables()
+	assert.Nil(t, err)
+	ReadReputation(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil), db)
+	assert.Equal(t, 400, recorder.Code)
+}
+
+func TestReadReputationValidIP(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	err = db.CreateTables()
+	assert.Nil(t, err)
+	ReadReputation(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil), db)
+	assert.Equal(t, 200, recorder.Code)
 }
