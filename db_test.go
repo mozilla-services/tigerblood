@@ -106,3 +106,20 @@ func BenchmarkSelection(b *testing.B) {
 		}
 	})
 }
+
+func TestUpdate(t *testing.T) {
+	assert.Nil(t, testDB.emptyReputationTable())
+	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
+	assert.Nil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
+	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), entry.Reputation)
+}
+
+func TestDelete(t *testing.T) {
+	assert.Nil(t, testDB.emptyReputationTable())
+	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
+	assert.Nil(t, testDB.DeleteReputationEntry(nil, ReputationEntry{IP: "192.168.0.1"}))
+	_, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.NotNil(t, err)
+}

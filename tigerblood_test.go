@@ -2,8 +2,10 @@ package tigerblood
 
 import (
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -70,7 +72,7 @@ func TestReadReputationInvalidIP(t *testing.T) {
 	err = db.CreateTables()
 	assert.Nil(t, err)
 	ReadReputation(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil), db)
-	assert.Equal(t, 400, recorder.Code)
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 }
 
 func TestReadReputationValidIP(t *testing.T) {
@@ -85,7 +87,7 @@ func TestReadReputationValidIP(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	ReadReputation(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil), db)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
 }
 
@@ -95,13 +97,61 @@ func TestReadReputationNoEntry(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.Exec("TRUNCATE TABLE reputation;")
+	db.emptyReputationTable()
 	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
 		IP:         "127.0.0.0/8",
 		Reputation: 50,
 	})
 	assert.Nil(t, err)
 	ReadReputation(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil), db)
-	assert.Equal(t, 404, recorder.Code)
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.Nil(t, err)
+}
+
+func TestCreateEntry(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+	CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)), db)
+	assert.Equal(t, http.StatusCreated, recorder.Code)
+	assert.Nil(t, err)
+	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(20), entry.Reputation)
+}
+
+func TestUpdateEntry(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+	CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)), db)
+	recorder = httptest.ResponseRecorder{}
+	UpdateReputation(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)), db)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Nil(t, err)
+	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(25), entry.Reputation)
+}
+
+func TestDeleteEntry(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+	CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)), db)
+	recorder = httptest.ResponseRecorder{}
+	DeleteReputation(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil), db)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Nil(t, err)
+	_, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.NotNil(t, err)
 }

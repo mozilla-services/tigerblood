@@ -80,13 +80,33 @@ func (db DB) emptyReputationTable() error {
 	return err
 }
 
-// InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database
+// InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, and if it already exists, it updates it
 func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	exec := db.Exec
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2) ON CONFLICT DO NOTHING;", entry.IP, entry.Reputation)
+	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2) ON CONFLICT (ip) DO UPDATE SET reputation = $2;", entry.IP, entry.Reputation)
+	return err
+}
+
+// InsertReputationEntry inserts a single ReputationEntry into the database
+func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2);", entry.IP, entry.Reputation)
+	return err
+}
+
+// UpdateReputationEntry updated a single ReputationEntry on the database
+func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	_, err := exec("UPDATE reputation SET reputation = $2 WHERE ip = $1;", entry.IP, entry.Reputation)
 	return err
 }
 
@@ -95,4 +115,14 @@ func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	var entry ReputationEntry
 	err := db.reputationSelectStmt.QueryRow(ip).Scan(&entry.IP, &entry.Reputation)
 	return entry, err
+}
+
+// DeleteReputationEntry deletes an entry from the database based on the entry's IP address
+func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	_, err := exec("DELETE FROM reputation WHERE ip = $1;", entry.IP)
+	return err
 }

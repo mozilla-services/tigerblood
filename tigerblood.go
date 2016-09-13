@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -37,13 +38,25 @@ func IPAddressFromHTTPPath(path string) (string, error) {
 // Handler is the main HTTP handler for tigerblood.
 func Handler(w http.ResponseWriter, r *http.Request, db *DB) {
 	startTime := time.Now()
-	switch r.Method {
-	case "GET":
-		ReadReputation(w, r, db)
-	case "POST":
-	case "PUT":
-	case "DELETE":
+	switch r.URL.Path {
+	case "/":
+		switch r.Method {
+		case "POST":
+			CreateReputation(w, r, db)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	default:
+		switch r.Method {
+		case "GET":
+			ReadReputation(w, r, db)
+		case "PUT":
+			UpdateReputation(w, r, db)
+		case "DELETE":
+			DeleteReputation(w, r, db)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	}
 	if time.Since(startTime).Nanoseconds() > 1e7 {
 		log.Printf("Request took %s to proces\n", time.Since(startTime))
@@ -51,7 +64,27 @@ func Handler(w http.ResponseWriter, r *http.Request, db *DB) {
 }
 
 // CreateReputation takes a JSON formatted IP reputation entry from the http request and inserts it to the database.
-func CreateReputation(w http.ResponseWriter, r *http.Request) {
+func CreateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+	var entry ReputationEntry
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error reading body: %s", err)
+		return
+	}
+	err = json.Unmarshal(body, &entry)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Could not unmarshal request body: %s", err)
+		return
+	}
+	err = db.InsertReputationEntry(nil, entry)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Could not insert reputation entry: %s", err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
 }
 
 // ReadReputation returns a JSON-formatted reputation entry from the database.
@@ -67,24 +100,70 @@ func ReadReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 	if err == sql.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		log.Printf("No entries found for IP %s", ip)
+		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error executing SQL: %s", err)
+		return
 	}
 	json, err := json.Marshal(entry)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling JSON: %s", err)
+		return
 	}
 	w.Write(json)
+	w.WriteHeader(http.StatusCreated)
 }
 
 // UpdateReputation takes a JSON body from the http request and updates that reputation entry on the database.
-func UpdateReputation(w http.ResponseWriter, r *http.Request) {
-
+// The HTTP requests path has to contain the IP to be updated, in CIDR notation. The body can contain the IP address, or it can be omitted. For example:
+// {"Reputation": 50} or {"Reputation": 50, "IP":, "192.168.0.1"}. The IP in the JSON body will be ignored.
+func UpdateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+	ip, err := IPAddressFromHTTPPath(r.URL.Path)
+	if err != nil {
+		// This means there was no IP address found in the path
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
+		return
+	}
+	var entry ReputationEntry
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error reading body: %s", err)
+		return
+	}
+	err = json.Unmarshal(body, &entry)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Could not unmarshal request body: %s", err)
+		return
+	}
+	entry.IP = ip
+	err = db.UpdateReputationEntry(nil, entry)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Could not update reputation entry: %s", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
-// DeleteReputation deletes
-func DeleteReputation(w http.ResponseWriter, r *http.Request) {
-
+// DeleteReputation deletes an entry based on the IP address provided on the path
+func DeleteReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+	ip, err := IPAddressFromHTTPPath(r.URL.Path)
+	if err != nil {
+		// This means there was no IP address found in the path
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
+		return
+	}
+	err = db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Could not update reputation entry: %s", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
