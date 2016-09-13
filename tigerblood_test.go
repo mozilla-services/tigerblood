@@ -14,7 +14,7 @@ var cases = []struct {
 }{
 	{
 		"/192.168.0.1",
-		"192.168.0.1",
+		"192.168.0.1/32",
 		false,
 	},
 	{
@@ -36,6 +36,16 @@ var cases = []struct {
 		"/....",
 		"",
 		true,
+	},
+	{
+		"/2001:0db8:0123:4567:89ab:cdef:1234:5678",
+		"2001:db8:123:4567:89ab:cdef:1234:5678/128",
+		false,
+	},
+	{
+		"/2001:db8::ff00:42:8329",
+		"2001:db8::ff00:42:8329/128",
+		false,
 	},
 }
 
@@ -85,6 +95,7 @@ func TestReadReputationNoEntry(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
+	db.Exec("TRUNCATE TABLE reputation;")
 	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
 		IP:         "127.0.0.0/8",
 		Reputation: 50,

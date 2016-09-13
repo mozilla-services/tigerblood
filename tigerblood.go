@@ -5,20 +5,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
-	"regexp"
+	"strings"
 	"time"
 )
 
-var ipre = regexp.MustCompile(`/((((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|/(3[0-2]|(2|1)?[0-9])$|$))){4})`)
-
 // IPAddressFromHTTPPath takes a HTTP path and returns an IPv4 IP if it's found, or an error if none is found.
 func IPAddressFromHTTPPath(path string) (string, error) {
-	match := ipre.FindStringSubmatch(path)
-	if match == nil {
-		return "", fmt.Errorf("No IPv4 address found on input string %s", path)
+	path = path[1:len(path)]
+	ip, network, err := net.ParseCIDR(path)
+	if err != nil {
+		if strings.Contains(path, "/") {
+			return "", fmt.Errorf("Error getting IP from HTTP path: %s", err)
+		}
+		ip = net.ParseIP(path)
+		if ip == nil {
+			return "", fmt.Errorf("Error getting IP from HTTP path: %s", err)
+		}
+		network = &net.IPNet{}
+		if ip.To4() != nil {
+			network.Mask = net.CIDRMask(32, 32)
+		} else if ip.To16() != nil {
+			network.Mask = net.CIDRMask(128, 128)
+		}
 	}
-	return match[1], nil
+	network.IP = ip
+	return network.String(), nil
 }
 
 // Handler is the main HTTP handler for tigerblood.
