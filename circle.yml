@@ -8,17 +8,21 @@ machine:
     - sudo tar -C /usr/local -xzf download/$GODIST
   environment:
     GODIST: "go1.7.linux-amd64.tar.gz"
+    IMPORT_PATH: "go.mozilla.org/tigerblood"
+    GWS: "$HOME/.go_workspace"
     TIGERBLOOD_DSN: "user=tigerblood dbname=tigerblood sslmode=disable"
 dependencies:
   cache_directories:
     - "~/docker"
-  override:
+  pre:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
     - sudo docker build -f postgres.Dockerfile -t postgres-ip4r .
     - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
     - "docker tag -f postgres-ip4r ${DOCKERHUB_REPO}:latest"
     - "docker push ${DOCKERHUB_REPO}:latest"
     - mkdir -p ~/docker; docker save ${DOCKERHUB_REPO} > ~/docker/image.tar
+    - mkdir -p "$GWS/src/$IMPORT_PATH/"
+    - cp -r ./ "$GWS/src/$IMPORT_PATH/"
 database:
   override:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
