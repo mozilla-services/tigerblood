@@ -12,6 +12,16 @@ import (
 	"time"
 )
 
+type TigerbloodHandler struct {
+	db *DB
+}
+
+func NewTigerbloodHandler(db *DB) *TigerbloodHandler {
+	return &TigerbloodHandler{
+		db: db,
+	}
+}
+
 // IPAddressFromHTTPPath takes a HTTP path and returns an IPv4 IP if it's found, or an error if none is found.
 func IPAddressFromHTTPPath(path string) (string, error) {
 	path = path[1:len(path)]
@@ -35,25 +45,24 @@ func IPAddressFromHTTPPath(path string) (string, error) {
 	return network.String(), nil
 }
 
-// Handler is the main HTTP handler for tigerblood.
-func Handler(w http.ResponseWriter, r *http.Request, db *DB) {
+func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	switch r.URL.Path {
 	case "/":
 		switch r.Method {
 		case "POST":
-			CreateReputation(w, r, db)
+			h.CreateReputation(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	default:
 		switch r.Method {
 		case "GET":
-			ReadReputation(w, r, db)
+			h.ReadReputation(w, r)
 		case "PUT":
-			UpdateReputation(w, r, db)
+			h.UpdateReputation(w, r)
 		case "DELETE":
-			DeleteReputation(w, r, db)
+			h.DeleteReputation(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -64,7 +73,7 @@ func Handler(w http.ResponseWriter, r *http.Request, db *DB) {
 }
 
 // CreateReputation takes a JSON formatted IP reputation entry from the http request and inserts it to the database.
-func CreateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+func (h *TigerbloodHandler) CreateReputation(w http.ResponseWriter, r *http.Request) {
 	var entry ReputationEntry
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -78,7 +87,7 @@ func CreateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 		log.Printf("Could not unmarshal request body: %s", err)
 		return
 	}
-	err = db.InsertReputationEntry(nil, entry)
+	err = h.db.InsertReputationEntry(nil, entry)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Could not insert reputation entry: %s", err)
@@ -88,7 +97,7 @@ func CreateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 }
 
 // ReadReputation returns a JSON-formatted reputation entry from the database.
-func ReadReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+func (h *TigerbloodHandler) ReadReputation(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
 		// This means there was no IP address found in the path
@@ -96,7 +105,7 @@ func ReadReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
-	entry, err := db.SelectSmallestMatchingSubnet(ip)
+	entry, err := h.db.SelectSmallestMatchingSubnet(ip)
 	if err == sql.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		log.Printf("No entries found for IP %s", ip)
@@ -119,7 +128,7 @@ func ReadReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 // UpdateReputation takes a JSON body from the http request and updates that reputation entry on the database.
 // The HTTP requests path has to contain the IP to be updated, in CIDR notation. The body can contain the IP address, or it can be omitted. For example:
 // {"Reputation": 50} or {"Reputation": 50, "IP":, "192.168.0.1"}. The IP in the JSON body will be ignored.
-func UpdateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+func (h *TigerbloodHandler) UpdateReputation(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
 		// This means there was no IP address found in the path
@@ -141,7 +150,7 @@ func UpdateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 		return
 	}
 	entry.IP = ip
-	err = db.UpdateReputationEntry(nil, entry)
+	err = h.db.UpdateReputationEntry(nil, entry)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Could not update reputation entry: %s", err)
@@ -151,7 +160,7 @@ func UpdateReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 }
 
 // DeleteReputation deletes an entry based on the IP address provided on the path
-func DeleteReputation(w http.ResponseWriter, r *http.Request, db *DB) {
+func (h *TigerbloodHandler) DeleteReputation(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
 		// This means there was no IP address found in the path
@@ -159,7 +168,7 @@ func DeleteReputation(w http.ResponseWriter, r *http.Request, db *DB) {
 		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
-	err = db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
+	err = h.db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Could not update reputation entry: %s", err)

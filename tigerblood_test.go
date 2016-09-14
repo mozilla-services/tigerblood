@@ -71,7 +71,8 @@ func TestReadReputationInvalidIP(t *testing.T) {
 	assert.Nil(t, err)
 	err = db.CreateTables()
 	assert.Nil(t, err)
-	ReadReputation(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil), db)
+	h := NewTigerbloodHandler(db)
+	h.ReadReputation(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 }
 
@@ -86,7 +87,8 @@ func TestReadReputationValidIP(t *testing.T) {
 		Reputation: 50,
 	})
 	assert.Nil(t, err)
-	ReadReputation(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil), db)
+	h := NewTigerbloodHandler(db)
+	h.ReadReputation(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil))
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
 }
@@ -103,7 +105,8 @@ func TestReadReputationNoEntry(t *testing.T) {
 		Reputation: 50,
 	})
 	assert.Nil(t, err)
-	ReadReputation(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil), db)
+	h := NewTigerbloodHandler(db)
+	h.ReadReputation(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.Nil(t, err)
 }
@@ -115,7 +118,8 @@ func TestCreateEntry(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)), db)
+	h := NewTigerbloodHandler(db)
+	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusCreated, recorder.Code)
 	assert.Nil(t, err)
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -130,9 +134,10 @@ func TestUpdateEntry(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)), db)
+	h := NewTigerbloodHandler(db)
+	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	recorder = httptest.ResponseRecorder{}
-	UpdateReputation(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)), db)
+	h.UpdateReputation(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -147,9 +152,10 @@ func TestDeleteEntry(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)), db)
+	h := NewTigerbloodHandler(db)
+	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	recorder = httptest.ResponseRecorder{}
-	DeleteReputation(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil), db)
+	h.DeleteReputation(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil))
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
 	_, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
