@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -55,6 +57,20 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
+	case "/__heartbeat__":
+		err := h.db.Ping()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+		return
+	case "/__lbheartbeat__":
+		w.WriteHeader(http.StatusOK)
+		return
+	case "/__version__":
+		h.handleVersion(w, r)
+		return
 	default:
 		switch r.Method {
 		case "GET":
@@ -70,6 +86,28 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if time.Since(startTime).Nanoseconds() > 1e7 {
 		log.Printf("Request took %s to proces\n", time.Since(startTime))
 	}
+}
+
+func (h *TigerbloodHandler) handleVersion(w http.ResponseWriter, req *http.Request) {
+	dir, err := os.Getwd()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not get CWD")
+		return
+	}
+	filename := path.Clean(dir + string(os.PathSeparator) + "version.json")
+	f, err := os.Open(filename)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	http.ServeContent(w, req, "__version__", stat.ModTime(), f)
 }
 
 // CreateReputation takes a JSON formatted IP reputation entry from the http request and inserts it to the database.
