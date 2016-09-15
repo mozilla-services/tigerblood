@@ -121,8 +121,8 @@ func (h *TigerbloodHandler) ReadReputation(w http.ResponseWriter, r *http.Reques
 		log.Printf("Error marshaling JSON: %s", err)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	w.Write(json)
-	w.WriteHeader(http.StatusCreated)
 }
 
 // UpdateReputation takes a JSON body from the http request and updates that reputation entry on the database.
