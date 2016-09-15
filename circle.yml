@@ -18,11 +18,23 @@ dependencies:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
     - sudo docker build -f postgres.Dockerfile -t postgres-ip4r .
     - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
-    - "docker tag -f postgres-ip4r ${DOCKERHUB_REPO}:latest"
-    - "docker push ${DOCKERHUB_REPO}:latest"
-    - mkdir -p ~/docker; docker save ${DOCKERHUB_REPO} > ~/docker/image.tar
+    - "docker tag -f postgres-ip4r ${DOCKERHUB_POSTGRES_REPO}:latest"
+    - "docker push ${DOCKERHUB_POSTGRES_REPO}:latest"
+    - mkdir -p ~/docker; docker save ${DOCKERHUB_POSTGRES_REPO} > ~/docker/image.tar
     - mkdir -p "$GWS/src/$IMPORT_PATH/"
-    - cp -r ./ "$GWS/src/$IMPORT_PATH/"
+    - cp -rf ./ "$GWS/src/$IMPORT_PATH/"
+    - >
+      printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n'
+      "$CIRCLE_SHA1"
+      "$CIRCLE_TAG"
+      "$CIRCLE_PROJECT_USERNAME"
+      "$CIRCLE_PROJECT_REPONAME"
+      "$CIRCLE_BUILD_URL" > version.json
+    - cp version.json $CIRCLE_ARTIFACTS
+    - go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
+    - docker build -t "app:build" .
+    - test -e $CIRCLE_ARTIFACTS/bin || mkdir -p $CIRCLE_ARTIFACTS/bin
+    - cp tigerblood $CIRCLE_ARTIFACTS/bin/tigerblood-linux-amd64-$CIRCLE_SHA1
 database:
   override:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
@@ -37,3 +49,25 @@ test:
     - go test . -bench=. -coverprofile=coverage.txt -covermode=atomic
   post:
     - bash <(curl -s https://codecov.io/bash)
+deployment:
+  hub_latest:
+    branch: master
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - docker tag app:build ${DOCKERHUB_REPO}:latest
+      - docker push ${DOCKERHUB_REPO}:latest
+
+  hub_releases:
+    tag: /.*/
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - docker tag app:build ${DOCKERHUB_REPO}:${CIRCLE_TAG}
+      - docker push ${DOCKERHUB_REPO}:${CIRCLE_TAG}
+
+  # push any releases candidate branches to DockerHub
+  hub_release_candidates:
+    branch: /rc_.*/
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - docker tag app:build ${DOCKERHUB_REPO}:${CIRCLE_BRANCH}
+      - docker push ${DOCKERHUB_REPO}:${CIRCLE_BRANCH}
