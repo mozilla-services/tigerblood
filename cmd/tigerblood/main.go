@@ -18,6 +18,10 @@ func main() {
 		panic(fmt.Errorf("Could not connect to the database: %s", err))
 	}
 	db.SetMaxOpenConns(80)
-	http.HandleFunc("/", tigerblood.NewHawkHandler(tigerblood.NewTigerbloodHandler(db), nil).ServeHTTP)
+	var handler http.Handler = tigerblood.NewTigerbloodHandler(db)
+	if _, found := os.LookupEnv("TIGERBLOOD_NO_HAWK"); !found {
+		handler = tigerblood.NewHawkHandler(handler, nil)
+	}
+	http.HandleFunc("/", handler.ServeHTTP)
 	http.ListenAndServe("127.0.0.1:8080", nil)
 }
