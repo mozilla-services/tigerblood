@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/DataDog/datadog-go/statsd"
 	"io/ioutil"
 	"log"
 	"net"
@@ -15,12 +16,14 @@ import (
 )
 
 type TigerbloodHandler struct {
-	db *DB
+	db     *DB
+	statsd *statsd.Client
 }
 
-func NewTigerbloodHandler(db *DB) *TigerbloodHandler {
+func NewTigerbloodHandler(db *DB, statsd *statsd.Client) *TigerbloodHandler {
 	return &TigerbloodHandler{
-		db: db,
+		db:     db,
+		statsd: statsd,
 	}
 }
 
@@ -82,6 +85,9 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
+	}
+	if h.statsd != nil {
+		h.statsd.Histogram("request.duration", float64(time.Since(startTime).Nanoseconds())/float64(1e6), nil, 1)
 	}
 	if time.Since(startTime).Nanoseconds() > 1e7 {
 		log.Printf("Request took %s to proces\n", time.Since(startTime))
@@ -147,6 +153,9 @@ func (h *TigerbloodHandler) ReadReputation(w http.ResponseWriter, r *http.Reques
 	if err == sql.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		log.Printf("No entries found for IP %s", ip)
+		if h.statsd != nil {
+			h.statsd.Incr("misses", nil, 1.0)
+		}
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -158,6 +167,9 @@ func (h *TigerbloodHandler) ReadReputation(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error marshaling JSON: %s", err)
 		return
+	}
+	if h.statsd != nil {
+		h.statsd.Incr("hits", nil, 1.0)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(json)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/DataDog/datadog-go/statsd"
 	"go.mozilla.org/tigerblood"
 	"log"
 	"net/http"
@@ -18,10 +19,21 @@ func main() {
 		panic(fmt.Errorf("Could not connect to the database: %s", err))
 	}
 	db.SetMaxOpenConns(80)
-	var handler http.Handler = tigerblood.NewTigerbloodHandler(db)
+	var statsdClient *statsd.Client
+	if statsdAddr, found := os.LookupEnv("TIGERBLOOD_STATSD_ADDR"); found {
+		statsdClient, err = statsd.New(statsdAddr)
+		statsdClient.Namespace = "tigerblood."
+	} else if !found || err != nil {
+		log.Println("statsd not found")
+	}
+	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient)
 	if _, found := os.LookupEnv("TIGERBLOOD_NO_HAWK"); !found {
 		handler = tigerblood.NewHawkHandler(handler, nil)
 	}
 	http.HandleFunc("/", handler.ServeHTTP)
-	http.ListenAndServe("127.0.0.1:8080", nil)
+	bind, found := os.LookupEnv("TIGERBLOOD_BIND_ADDR")
+	if !found {
+		bind = "127.0.0.1:8080"
+	}
+	http.ListenAndServe(bind, nil)
 }
