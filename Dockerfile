@@ -1,4 +1,4 @@
-FROM busybox:1.24.2
+FROM busybox:1.25-glibc
 
 WORKDIR /app
 ENTRYPOINT ["/app/tigerblood"]

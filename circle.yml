@@ -31,6 +31,7 @@ dependencies:
       "$CIRCLE_PROJECT_REPONAME"
       "$CIRCLE_BUILD_URL" > version.json
     - cp version.json $CIRCLE_ARTIFACTS
+    - go get -d
     - go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
     - docker build -t "app:build" .
     - test -e $CIRCLE_ARTIFACTS/bin || mkdir -p $CIRCLE_ARTIFACTS/bin
