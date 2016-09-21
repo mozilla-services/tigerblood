@@ -32,7 +32,7 @@ dependencies:
       "$CIRCLE_BUILD_URL" > version.json
     - cp version.json $CIRCLE_ARTIFACTS
     - go get -d
-    - go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
+    - CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
     - docker build -t "app:build" .
     - test -e $CIRCLE_ARTIFACTS/bin || mkdir -p $CIRCLE_ARTIFACTS/bin
     - cp tigerblood $CIRCLE_ARTIFACTS/bin/tigerblood-linux-amd64-$CIRCLE_SHA1
