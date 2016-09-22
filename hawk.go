@@ -35,16 +35,20 @@ func NewHawkHandler(handler http.Handler, secrets map[string]string) *HawkHandle
 }
 
 func (h *HawkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	auth, err := hawk.NewAuthFromRequest(r, h.lookupCredentials, h.lookupNonce)
-	if err != nil || auth.Valid() != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	hash := auth.PayloadHash(r.Header.Get("Content-Type"))
-	io.Copy(hash, r.Body)
-	if !auth.ValidHash(hash) {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	if r.URL.Path != "/__lbheartbeat__" &&
+		r.URL.Path != "/__heartbeat__" &&
+		r.URL.Path != "/__version__" {
+		auth, err := hawk.NewAuthFromRequest(r, h.lookupCredentials, h.lookupNonce)
+		if err != nil || auth.Valid() != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		hash := auth.PayloadHash(r.Header.Get("Content-Type"))
+		io.Copy(hash, r.Body)
+		if !auth.ValidHash(hash) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 	}
 	// Authentication successful, continue
 	h.handler.ServeHTTP(w, r)

@@ -115,3 +115,18 @@ func TestReplayProtection(t *testing.T) {
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
+
+func TestLoadbalancerEndpointsUnauthed(t *testing.T) {
+	for _, path := range []string{
+		"/__lbheartbeat__",
+		"/__heartbeat__",
+		"/__version__",
+	} {
+		req, err := http.NewRequest("GET", "http://foo.bar"+path, nil)
+		assert.Nil(t, err)
+		recorder := httptest.NewRecorder()
+		handler := NewHawkHandler(EchoHandler, map[string]string{"fxa": "foobar"})
+		handler.ServeHTTP(recorder, req)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	}
+}
