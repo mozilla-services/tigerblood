@@ -31,7 +31,10 @@ func NewDB(dsn string) (*DB, error) {
 	newDB := &DB{
 		DB: db,
 	}
-	newDB.CreateTables()
+	err = newDB.CreateTables()
+	if err != nil {
+		return nil, fmt.Errorf("Could not create tables: %s", err)
+	}
 	reputationSelectStmt, err := db.Prepare("SELECT ip, reputation FROM reputation WHERE ip >>= $1 ORDER BY @ ip LIMIT 1;")
 	if err != nil {
 		return nil, fmt.Errorf("Could not create prepared statement: %s", err)

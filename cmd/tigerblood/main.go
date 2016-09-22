@@ -35,5 +35,8 @@ func main() {
 	if !found {
 		bind = "127.0.0.1:8080"
 	}
-	http.ListenAndServe(bind, nil)
+	err = http.ListenAndServe(bind, nil)
+	if err != nil {
+		panic(err)
+	}
 }
