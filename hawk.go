@@ -2,12 +2,14 @@ package tigerblood
 
 import (
 	"go.mozilla.org/hawk"
-	"io"
 	"net/http"
 	"time"
 
+	"bytes"
 	"crypto/sha256"
 	"github.com/willf/bloom"
+	"io"
+	"io/ioutil"
 	"sync"
 )
 
@@ -43,8 +45,14 @@ func (h *HawkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		hash := auth.PayloadHash(r.Header.Get("Content-Type"))
-		io.Copy(hash, r.Body)
+		io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
 		if !auth.ValidHash(hash) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
