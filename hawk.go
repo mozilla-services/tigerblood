@@ -25,12 +25,13 @@ type HawkHandler struct {
 }
 
 func NewHawkHandler(handler http.Handler, secrets map[string]string) *HawkHandler {
-	var requestsPerHalfLife uint = 50000
+	var requestsPerHalfLife uint = 2000 * 30
+	var bitsPerRequest uint = 50
 	return &HawkHandler{
 		handler:       handler,
 		credentials:   secrets,
-		bloomPrev:     bloom.New(requestsPerHalfLife, 5),
-		bloomNow:      bloom.New(requestsPerHalfLife, 5),
+		bloomPrev:     bloom.New(requestsPerHalfLife * bitsPerRequest, 5),
+		bloomNow:      bloom.New(requestsPerHalfLife * bitsPerRequest, 5),
 		bloomHalflife: 30 * time.Second,
 		lastRotate:    time.Now(),
 	}
