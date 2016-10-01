@@ -23,3 +23,73 @@ If you don't want to install postgres, you can do this from a docker container:
   ```
 - Exit postgres by typing `\q` and pressing the Return key.
 - Exit the docker container by typing `exit` and pressing the Return key.
+
+## HTTP API
+
+All requests to the API must be authenticated with a Hawk authorization header.
+
+Response schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "IP": {
+      "type": "string"
+    },
+    "Reputation": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "IP",
+    "Reputation"
+  ]
+}
+```
+
+`{ip}` should be substituted for a CIDR-notation IP address or network.
+
+### GET /{ip}
+
+Retrieves information about an IP address or network.
+
+* Request body: None
+* Request parameters: None
+
+* Response body: a JSON object with the schema specified above
+
+### POST /
+
+Records information about a new IP address or network.
+
+* Request body: a JSON object with the schema specified above
+* Request parameters: None
+
+* Reponse body: None
+
+### PUT /{ip}
+
+Updates information about an IP address or network.
+
+* Request body: a JSON object with the schema specified above. The `"IP"` field is optional for this endpoint, and if provided, it will be ignored.
+
+### DELETE /{ip}
+
+Deletes information about an IP address or network.
+
+* Request body: None
+* Request parameters: None
+
+* Response body: None
+
+### GET /__lbheartbeat__ and GET /__heartbeat__
+
+Endpoints designed for load balancers.
+
+### GET /__version__
+
+* Request body: None
+* Request parameters: None
+
+* Response body: A JSON object with information about tigerblood's version.
