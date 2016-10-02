@@ -1,15 +1,17 @@
 from requests_hawk import HawkAuth
 import requests
-import os
+import json
 
 
 def healthcheck(event, context):
+    with open('config.json') as config_file:
+        config = json.load(config_file)
     hawk_auth = HawkAuth(
-        id=os.environ['HAWK_ID'],
-        key=os.environ['HAWK_KEY'])
+        id=config['hawk_id'],
+        key=config['hawk_key'])
 
-    ip = u"127.0.0.1"
-    url = "https://tigerblood.stage.mozaws.net/"
+    ip = config['ip']
+    url = config['url']
 
     get = requests.get(url + ip, auth=hawk_auth)
     if get.status_code != 404:
