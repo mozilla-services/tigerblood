@@ -8,5 +8,6 @@ RUN addgroup -g 10001 app && \
 
 COPY version.json /app/version.json
 COPY tigerblood /app/tigerblood
+COPY config.yml /app/config.yml
 
 USER app

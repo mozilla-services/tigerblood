@@ -1,0 +1,4 @@
+bindAddress: 127.0.0.1:8000
+enableHawk: false
+credentials:
+  root: toor

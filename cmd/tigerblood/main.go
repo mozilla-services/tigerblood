@@ -5,59 +5,45 @@ import (
 	"fmt"
 	"github.com/DataDog/datadog-go/statsd"
 	"go.mozilla.org/tigerblood"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 )
-
-func loadConfig(path string) (tigerblood.Config, error) {
-	var config tigerblood.Config
-	bytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return config, err
-	}
-	err = yaml.Unmarshal(bytes, &config)
-	return config, err
-}
 
 func main() {
 	configFile := flag.String("config-file", "config.yml", "Path to the YAML config file")
 	flag.Parse()
-	config, err := loadConfig(*configFile)
+	config, err := tigerblood.LoadConfigFromPath(*configFile)
 	if err != nil {
 		log.Println("Error loading config file:", err)
 	}
-	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
-	if !found {
+	if config.DatabaseDsn == "" {
 		log.Println("No database DSN found")
 	}
-	db, err := tigerblood.NewDB(dsn)
+	db, err := tigerblood.NewDB(config.DatabaseDsn)
 	if err != nil {
 		log.Fatal(fmt.Errorf("Could not connect to the database: %s", err))
 	}
 	db.SetMaxOpenConns(80)
 	var statsdClient *statsd.Client
-	if statsdAddr, found := os.LookupEnv("TIGERBLOOD_STATSD_ADDR"); found {
-		statsdClient, err = statsd.New(statsdAddr)
+	if config.StatsdAddress != "" {
+		statsdClient, err = statsd.New(config.StatsdAddress)
 		statsdClient.Namespace = "tigerblood."
-	} else if !found || err != nil {
-		log.Println("statsd not found")
-	}
+		if err != nil {
+			log.Println("Could not connect to statsd:", err)
+		}
+	} 
 	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient)
-	if _, found := os.LookupEnv("TIGERBLOOD_NO_HAWK"); !found {
+	if config.EnableHawk {
 		if config.Credentials == nil {
-			log.Fatal(fmt.Sprintf("Could not load hawk credentials! %s", err))
+			log.Fatal(fmt.Sprintf("Hawk is enabled but the Hawk credential map is nil!"))
 		}
 		handler = tigerblood.NewHawkHandler(handler, config.Credentials)
 	}
 	http.HandleFunc("/", handler.ServeHTTP)
-	bind, found := os.LookupEnv("TIGERBLOOD_BIND_ADDR")
-	if !found {
-		bind = "127.0.0.1:8080"
+	if config.BindAddress == "" {
+		config.BindAddress = "127.0.0.1:8080"
 	}
-	err = http.ListenAndServe(bind, nil)
+	err = http.ListenAndServe(config.BindAddress, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
