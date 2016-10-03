@@ -26,8 +26,6 @@ If you don't want to install postgres, you can do this from a docker container:
 
 ## HTTP API
 
-All requests to the API must be authenticated with a Hawk authorization header.
-
 Response schema:
 
 ```json
@@ -48,10 +46,15 @@ Response schema:
 }
 ```
 
+### Authorization
+
+All requests to the API must be authenticated with a [Hawk](https://github.com/hueniverse/hawk) authorization header. For example, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
+
+### Endpoints
 `{ip}` should be substituted for a CIDR-notation IP address or network.
 In the examples, we assume tigerblood is listening on http://tigerblood
 
-### GET /{ip}
+#### GET /{ip}
 
 Retrieves information about an IP address or network.
 
@@ -61,9 +64,9 @@ Retrieves information about an IP address or network.
 * Response body: a JSON object with the schema specified above
 * Successful response status code: 200
 
-Example: `curl http://tigerblood/240.0.0.1`
+Example: `curl http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-### POST /
+#### POST /
 
 Records information about a new IP address or network.
 
@@ -73,9 +76,9 @@ Records information about a new IP address or network.
 * Response body: None
 * Successful response status code: 201
 
-Example: `curl -d '{"IP": "240.0.0.1", "Reputation": 45}' -X POST http://tigerblood/`
+Example: `curl -d '{"IP": "240.0.0.1", "Reputation": 45}' -X POST http://tigerblood/ --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-### PUT /{ip}
+#### PUT /{ip}
 
 Updates information about an IP address or network.
 
@@ -84,9 +87,9 @@ Updates information about an IP address or network.
 * Response body: None
 * Successful response status code: 200
 
-Example: `curl -d '{"Reputation": 5}' -X PUT http://tigerblood/240.0.0.1`
+Example: `curl -d '{"Reputation": 5}' -X PUT http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-### DELETE /{ip}
+#### DELETE /{ip}
 
 Deletes information about an IP address or network.
 
@@ -96,9 +99,9 @@ Deletes information about an IP address or network.
 * Response body: None
 * Successful response status code: 200
 
-Example: `curl -X DELETE http://tigerblood/240.0.0.1`
+Example: `curl -X DELETE http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-### GET /__lbheartbeat__ and GET /__heartbeat__
+#### GET /__lbheartbeat__ and GET /__heartbeat__
 
 Endpoints designed for load balancers.
 
@@ -110,7 +113,7 @@ Endpoints designed for load balancers.
 
 Example: `curl http://tigerblood/__heartbeat__`
 
-### GET /__version__
+#### GET /__version__
 
 * Request body: None
 * Request parameters: None
