@@ -49,6 +49,7 @@ Response schema:
 ```
 
 `{ip}` should be substituted for a CIDR-notation IP address or network.
+In the examples, we assume tigerblood is listening on http://tigerblood
 
 ### GET /{ip}
 
@@ -58,6 +59,9 @@ Retrieves information about an IP address or network.
 * Request parameters: None
 
 * Response body: a JSON object with the schema specified above
+* Successful response status code: 200
+
+Example: `curl http://tigerblood/240.0.0.1`
 
 ### POST /
 
@@ -66,13 +70,21 @@ Records information about a new IP address or network.
 * Request body: a JSON object with the schema specified above
 * Request parameters: None
 
-* Reponse body: None
+* Response body: None
+* Successful response status code: 201
+
+Example: `curl -d '{"IP": "240.0.0.1", "Reputation": 45}' -X POST http://tigerblood/`
 
 ### PUT /{ip}
 
 Updates information about an IP address or network.
 
 * Request body: a JSON object with the schema specified above. The `"IP"` field is optional for this endpoint, and if provided, it will be ignored.
+
+* Response body: None
+* Successful response status code: 200
+
+Example: `curl -d '{"Reputation": 5}' -X PUT http://tigerblood/240.0.0.1`
 
 ### DELETE /{ip}
 
@@ -82,10 +94,21 @@ Deletes information about an IP address or network.
 * Request parameters: None
 
 * Response body: None
+* Successful response status code: 200
+
+Example: `curl -X DELETE http://tigerblood/240.0.0.1`
 
 ### GET /__lbheartbeat__ and GET /__heartbeat__
 
 Endpoints designed for load balancers.
+
+* Request body: None
+* Request parameters: None
+
+* Response body: None
+* Successful response status code: 200
+
+Example: `curl http://tigerblood/__heartbeat__`
 
 ### GET /__version__
 
@@ -93,3 +116,6 @@ Endpoints designed for load balancers.
 * Request parameters: None
 
 * Response body: A JSON object with information about tigerblood's version.
+* Successful response status code: 200
+
+Example: `curl http://tigerblood/__version__`
