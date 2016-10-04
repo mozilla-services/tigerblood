@@ -132,8 +132,14 @@ func (h *TigerbloodHandler) CreateReputation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	err = h.db.InsertReputationEntry(nil, entry)
-	if err != nil {
+	if _, ok := err.(CheckViolationError); ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Reputation is outside of valid range [0-100]"))
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	if err != nil {
 		log.Printf("Could not insert reputation entry: %s", err)
 		return
 	}
@@ -201,8 +207,14 @@ func (h *TigerbloodHandler) UpdateReputation(w http.ResponseWriter, r *http.Requ
 	}
 	entry.IP = ip
 	err = h.db.UpdateReputationEntry(nil, entry)
-	if err != nil {
+	if _, ok := err.(CheckViolationError); ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Reputation is outside of valid range [0-100]"))
+	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	if err != nil {
 		log.Printf("Could not update reputation entry: %s", err)
 		return
 	}
