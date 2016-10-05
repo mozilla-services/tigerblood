@@ -17,7 +17,7 @@ func main() {
 		log.Println("Error loading config file:", err)
 	}
 	if config.DatabaseDsn == "" {
-		log.Println("No database DSN found")
+		log.Fatal("No database DSN found")
 	}
 	db, err := tigerblood.NewDB(config.DatabaseDsn)
 	if err != nil {
