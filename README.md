@@ -24,6 +24,107 @@ If you don't want to install postgres, you can do this from a docker container:
 - Exit postgres by typing `\q` and pressing the Return key.
 - Exit the docker container by typing `exit` and pressing the Return key.
 
+
 ## Decay lambda function
 
 In order for the reputation to automatically rise back to 100, you need to set up the lambda function in `./tools/decay/`
+
+
+## HTTP API
+
+Response schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "IP": {
+      "type": "string"
+    },
+    "Reputation": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "IP",
+    "Reputation"
+  ]
+}
+```
+
+### Authorization
+
+All requests to the API must be authenticated with a [Hawk](https://github.com/hueniverse/hawk) authorization header. For example, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
+
+### Endpoints
+`{ip}` should be substituted for a CIDR-notation IP address or network.
+In the examples, we assume tigerblood is listening on http://tigerblood
+
+#### GET /{ip}
+
+Retrieves information about an IP address or network.
+
+* Request body: None
+* Request parameters: None
+
+* Response body: a JSON object with the schema specified above
+* Successful response status code: 200
+
+Example: `curl http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+#### POST /
+
+Records information about a new IP address or network.
+
+* Request body: a JSON object with the schema specified above
+* Request parameters: None
+
+* Response body: None
+* Successful response status code: 201
+
+Example: `curl -d '{"IP": "240.0.0.1", "Reputation": 45}' -X POST http://tigerblood/ --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+#### PUT /{ip}
+
+Updates information about an IP address or network.
+
+* Request body: a JSON object with the schema specified above. The `"IP"` field is optional for this endpoint, and if provided, it will be ignored.
+
+* Response body: None
+* Successful response status code: 200
+
+Example: `curl -d '{"Reputation": 5}' -X PUT http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+#### DELETE /{ip}
+
+Deletes information about an IP address or network.
+
+* Request body: None
+* Request parameters: None
+
+* Response body: None
+* Successful response status code: 200
+
+Example: `curl -X DELETE http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+#### GET /__lbheartbeat__ and GET /__heartbeat__
+
+Endpoints designed for load balancers.
+
+* Request body: None
+* Request parameters: None
+
+* Response body: None
+* Successful response status code: 200
+
+Example: `curl http://tigerblood/__heartbeat__`
+
+#### GET /__version__
+
+* Request body: None
+* Request parameters: None
+
+* Response body: A JSON object with information about tigerblood's version.
+* Successful response status code: 200
+
+Example: `curl http://tigerblood/__version__`
