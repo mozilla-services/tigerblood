@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatal(fmt.Errorf("Could not connect to the database: %s", err))
 	}
-	db.SetMaxOpenConns(80)
+	db.SetMaxOpenConns(config.DatabaseMaxOpenConns)
 	var statsdClient *statsd.Client
 	if config.StatsdAddress != "" {
 		statsdClient, err = statsd.New(config.StatsdAddress)

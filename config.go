@@ -4,15 +4,19 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"strconv"
 )
 
 type Config struct {
-	Credentials   map[string]string
-	BindAddress   string
-	DatabaseDsn   string
-	StatsdAddress string
-	EnableHawk    bool
+	Credentials          map[string]string
+	BindAddress          string
+	DatabaseDsn          string
+	DatabaseMaxOpenConns int
+	StatsdAddress        string
+	EnableHawk           bool
 }
+
+const defaultDatabaseMaxOpenConns = 80
 
 // LoadConfigFromPath loads a yaml config file from the provided path, overriding values based on environment variables
 func LoadConfigFromPath(path string) (Config, error) {
@@ -24,6 +28,16 @@ func LoadConfigFromPath(path string) (Config, error) {
 	err = yaml.Unmarshal(bytes, &config)
 	if dsn, found := os.LookupEnv("TIGERBLOOD_DSN"); found {
 		config.DatabaseDsn = dsn
+	}
+	if dbMaxOpenConns, found := os.LookupEnv("TIGERBLOOD_DB_MAX_OPEN_CONNS"); found {
+		dbMaxOpenConns, err := strconv.Atoi(dbMaxOpenConns)
+		if err != nil {
+			return config, err
+		}
+		config.DatabaseMaxOpenConns = dbMaxOpenConns
+	}
+	if config.DatabaseMaxOpenConns == 0 {
+		config.DatabaseMaxOpenConns = defaultDatabaseMaxOpenConns
 	}
 	if statsdAddr, found := os.LookupEnv("TIGERBLOOD_STATSD_ADDR"); found {
 		config.StatsdAddress = statsdAddr
