@@ -24,6 +24,12 @@ If you don't want to install postgres, you can do this from a docker container:
 - Exit postgres by typing `\q` and pressing the Return key.
 - Exit the docker container by typing `exit` and pressing the Return key.
 
+
+## Decay lambda function
+
+In order for the reputation to automatically rise back to 100, you need to set up the lambda function in `./tools/decay/`
+
+
 ## HTTP API
 
 Response schema:

@@ -1,0 +1,4 @@
+*
+!.gitignore
+!decay.py
+!config.json

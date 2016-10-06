@@ -1,0 +1,4 @@
+{
+    "DB_DSN": "host=127.0.0.1 user=tigerblood dbname=tigerblood sslmode=disable",
+    "DECAY_RATE": 1
+}
