@@ -1,63 +1,52 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"github.com/DataDog/datadog-go/statsd"
+	"github.com/spf13/viper"
 	"go.mozilla.org/tigerblood"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 )
 
-func loadConfig(path string) (tigerblood.Config, error) {
-	var config tigerblood.Config
-	bytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return config, err
-	}
-	err = yaml.Unmarshal(bytes, &config)
-	return config, err
-}
-
 func main() {
-	configFile := flag.String("config-file", "config.yml", "Path to the YAML config file")
-	flag.Parse()
-	config, err := loadConfig(*configFile)
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 80)
+	viper.SetDefault("BIND_ADDR", "127.0.0.1:8080")
+	viper.SetDefault("STATSD_ADDR", "127.0.0.1:8125")
+	viper.SetEnvPrefix("tigerblood")
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
 	if err != nil {
-		log.Println("Error loading config file:", err)
+		log.Fatalf("Error loading config file: %s", err)
 	}
-	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
-	if !found {
-		log.Println("No database DSN found")
+	if !viper.IsSet("DSN") {
+		log.Fatalf("No DSN found. Cannot continue without a database")
 	}
-	db, err := tigerblood.NewDB(dsn)
+	db, err := tigerblood.NewDB(viper.GetString("DSN"))
 	if err != nil {
-		log.Fatal(fmt.Errorf("Could not connect to the database: %s", err))
+		log.Fatalf("Could not connect to database: %s", err)
 	}
-	db.SetMaxOpenConns(80)
+	db.SetMaxOpenConns(viper.GetInt("DATABASE_MAX_OPEN_CONNS"))
+
 	var statsdClient *statsd.Client
-	if statsdAddr, found := os.LookupEnv("TIGERBLOOD_STATSD_ADDR"); found {
-		statsdClient, err = statsd.New(statsdAddr)
+	if viper.IsSet("STATSD_ADDR") {
+		statsdClient, err = statsd.New(viper.GetString("STATSD_ADDR"))
 		statsdClient.Namespace = "tigerblood."
-	} else if !found || err != nil {
+	} else {
 		log.Println("statsd not found")
 	}
+
 	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient)
-	if _, found := os.LookupEnv("TIGERBLOOD_NO_HAWK"); !found {
-		if config.Credentials == nil {
-			log.Fatal(fmt.Sprintf("Could not load hawk credentials! %s", err))
+	if viper.Get("HAWK") == "yes" {
+		credentials := viper.GetStringMapString("CREDENTIALS")
+		if len(credentials) == 0 {
+			log.Fatal("Hawk was enabled, but no credentials were found.")
 		}
-		handler = tigerblood.NewHawkHandler(handler, config.Credentials)
+		handler = tigerblood.NewHawkHandler(handler, credentials)
 	}
 	http.HandleFunc("/", handler.ServeHTTP)
-	bind, found := os.LookupEnv("TIGERBLOOD_BIND_ADDR")
-	if !found {
-		bind = "127.0.0.1:8080"
-	}
-	err = http.ListenAndServe(bind, nil)
+	err = http.ListenAndServe(viper.GetString("BIND_ADDR"), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
