@@ -2,12 +2,14 @@ package tigerblood
 
 import (
 	"go.mozilla.org/hawk"
-	"io"
 	"net/http"
 	"time"
 
+	"bytes"
 	"crypto/sha256"
 	"github.com/willf/bloom"
+	"io"
+	"io/ioutil"
 	"sync"
 )
 
@@ -23,12 +25,13 @@ type HawkHandler struct {
 }
 
 func NewHawkHandler(handler http.Handler, secrets map[string]string) *HawkHandler {
-	var requestsPerHalfLife uint = 50000
+	var requestsPerHalfLife uint = 2000 * 30
+	var bitsPerRequest uint = 50
 	return &HawkHandler{
 		handler:       handler,
 		credentials:   secrets,
-		bloomPrev:     bloom.New(requestsPerHalfLife, 5),
-		bloomNow:      bloom.New(requestsPerHalfLife, 5),
+		bloomPrev:     bloom.New(requestsPerHalfLife * bitsPerRequest, 5),
+		bloomNow:      bloom.New(requestsPerHalfLife * bitsPerRequest, 5),
 		bloomHalflife: 30 * time.Second,
 		lastRotate:    time.Now(),
 	}
@@ -43,8 +46,14 @@ func (h *HawkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		hash := auth.PayloadHash(r.Header.Get("Content-Type"))
-		io.Copy(hash, r.Body)
+		io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
 		if !auth.ValidHash(hash) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
