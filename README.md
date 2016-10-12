@@ -23,3 +23,7 @@ If you don't want to install postgres, you can do this from a docker container:
   ```
 - Exit postgres by typing `\q` and pressing the Return key.
 - Exit the docker container by typing `exit` and pressing the Return key.
+
+## Healthcheck
+
+You can find a healthcheck lambda function under `./tools/healthcheck`.
