@@ -148,6 +148,8 @@ func TestUpdateEntry(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 	h := NewTigerbloodHandler(db, nil)
+	h.UpdateReputation(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	recorder = httptest.ResponseRecorder{}
 	h.UpdateReputation(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))

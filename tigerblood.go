@@ -210,15 +210,14 @@ func (h *TigerbloodHandler) UpdateReputation(w http.ResponseWriter, r *http.Requ
 	if _, ok := err.(CheckViolationError); ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Reputation is outside of valid range [0-100]"))
+	} else if err == ErrNoRowsAffected {
+		w.WriteHeader(http.StatusNotFound)
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	if err != nil {
 		log.Printf("Could not update reputation entry: %s", err)
-		return
+	} else if err == nil {
+		w.WriteHeader(http.StatusOK)
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 // DeleteReputation deletes an entry based on the IP address provided on the path

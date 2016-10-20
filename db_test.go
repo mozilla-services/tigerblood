@@ -123,6 +123,7 @@ func BenchmarkSelection(b *testing.B) {
 
 func TestUpdate(t *testing.T) {
 	assert.Nil(t, testDB.emptyReputationTable())
+	assert.NotNil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
 	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
 	assert.Nil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
 	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")

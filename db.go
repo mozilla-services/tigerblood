@@ -16,6 +16,8 @@ func (e CheckViolationError) Error() string {
 
 const pgCheckViolationErrorCode = "23514"
 
+var ErrNoRowsAffected = fmt.Errorf("No rows affected")
+
 // DB is a DB instance for running queries against the tigerblood database
 type DB struct {
 	*sql.DB
@@ -124,13 +126,23 @@ func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("UPDATE reputation SET reputation = $2 WHERE ip = $1;", entry.IP, entry.Reputation)
+	result, err := exec("UPDATE reputation SET reputation = $2 WHERE ip = $1 RETURNING ip;", entry.IP, entry.Reputation)
 	if pqErr, ok := err.(*pq.Error); ok {
 		if pqErr.Code == pgCheckViolationErrorCode {
 			return CheckViolationError{pqErr}
 		}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNoRowsAffected
+	}
+	return nil
 }
 
 // SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.
