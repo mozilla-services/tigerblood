@@ -25,6 +25,36 @@ If you don't want to install postgres, you can do this from a docker container:
 - Exit the docker container by typing `exit` and pressing the Return key.
 
 
+## Configuration
+
+Tigerblood can be configured either via a config file or via environment variables.
+
+The following configuration options are available:
+
+| Option name                | Description                                                                              | Default           |
+|----------------------------|------------------------------------------------------------------------------------------|-------------------|
+| CREDENTIALS                | A map of hawk id-keys.                                                                   | -                 |
+| DATABASE\_MAX\_OPEN\_CONNS | The maximum amount of PostgreSQL database connections tigerblood will open               | 80                |
+| BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
+| STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
+| DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
+| HAWK                       | "yes" to enable Hawk authentication. If "yes" is provided, credentials must be non-empty | - (Hawk disabled) |
+
+For environment variables, the configuration options must be prefixed with "TIGERBLOOD\_", for example, the environment variable to configure the DSN is TIGERBLOOD\_DSN.
+
+The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do not have to be prefixed in config files. For example:
+
+```json
+{
+    "DSN": "user=tigerblood dbname=tigerblood sslmode=disable",
+    "BIND_ADDR": "127.0.0.1:8080",
+    "HAWK": "yes",
+    "CREDENTIALS": {
+        "root": "toor"
+    }
+}
+```
+
 ## Decay lambda function
 
 In order for the reputation to automatically rise back to 100, you need to set up the lambda function in `./tools/decay/`
