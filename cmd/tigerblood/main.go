@@ -14,6 +14,7 @@ func main() {
 	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 80)
 	viper.SetDefault("BIND_ADDR", "127.0.0.1:8080")
 	viper.SetDefault("STATSD_ADDR", "127.0.0.1:8125")
+	viper.SetDefault("HAWK", false)
 	viper.SetEnvPrefix("tigerblood")
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
@@ -38,7 +39,7 @@ func main() {
 	}
 
 	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient)
-	if viper.Get("HAWK") == "yes" {
+	if viper.GetBool("HAWK") {
 		credentials := viper.GetStringMapString("CREDENTIALS")
 		if len(credentials) == 0 {
 			log.Fatal("Hawk was enabled, but no credentials were found.")

@@ -38,7 +38,7 @@ The following configuration options are available:
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
-| HAWK                       | "yes" to enable Hawk authentication. If "yes" is provided, credentials must be non-empty | - (Hawk disabled) |
+| HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
 
 For environment variables, the configuration options must be prefixed with "TIGERBLOOD\_", for example, the environment variable to configure the DSN is TIGERBLOOD\_DSN.
 
