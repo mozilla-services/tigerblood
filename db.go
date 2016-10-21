@@ -3,8 +3,20 @@ package tigerblood
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
+
+type CheckViolationError struct {
+	Inner *pq.Error
+}
+
+func (e CheckViolationError) Error() string {
+	return e.Inner.Error()
+}
+
+const pgCheckViolationErrorCode = "23514"
+
+var ErrNoRowsAffected = fmt.Errorf("No rows affected")
 
 // DB is a DB instance for running queries against the tigerblood database
 type DB struct {
@@ -46,7 +58,7 @@ func NewDB(dsn string) (*DB, error) {
 const createReputationTableSQL = `
 CREATE TABLE IF NOT EXISTS reputation (
 ip ip4r PRIMARY KEY NOT NULL,
-reputation int NOT NULL
+reputation int NOT NULL CHECK (reputation >= 0 AND reputation <= 100)
 );
 CREATE INDEX IF NOT EXISTS reputation_ip_idx ON reputation USING gist (ip);
 `
@@ -100,6 +112,11 @@ func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 		exec = tx.Exec
 	}
 	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2);", entry.IP, entry.Reputation)
+	if pqErr, ok := err.(*pq.Error); ok {
+		if pqErr.Code == pgCheckViolationErrorCode {
+			return CheckViolationError{pqErr}
+		}
+	}
 	return err
 }
 
@@ -109,8 +126,23 @@ func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("UPDATE reputation SET reputation = $2 WHERE ip = $1;", entry.IP, entry.Reputation)
-	return err
+	result, err := exec("UPDATE reputation SET reputation = $2 WHERE ip = $1 RETURNING ip;", entry.IP, entry.Reputation)
+	if pqErr, ok := err.(*pq.Error); ok {
+		if pqErr.Code == pgCheckViolationErrorCode {
+			return CheckViolationError{pqErr}
+		}
+	}
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNoRowsAffected
+	}
+	return nil
 }
 
 // SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.

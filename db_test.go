@@ -30,6 +30,20 @@ func TestCreateSchema(t *testing.T) {
 	assert.Nil(t, err, "Running CreateTables when the tables already exist shouldn't error")
 }
 
+func TestReputationInsertConstraint(t *testing.T) {
+	err := testDB.InsertReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 500})
+	assert.IsType(t, CheckViolationError{}, err)
+	err = testDB.InsertReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 50})
+	assert.Nil(t, err)
+}
+
+func TestReputationUpdateConstraint(t *testing.T) {
+	err := testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 500})
+	assert.IsType(t, CheckViolationError{}, err)
+	err = testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 50})
+	assert.Nil(t, err)
+}
+
 func randomCidr(minSubnet, maxSubnet uint) string {
 	// Get a subnet with mean on 24 and a stdev of 5
 	subnet := math.Abs(rand.NormFloat64())*24 + 5
@@ -109,6 +123,7 @@ func BenchmarkSelection(b *testing.B) {
 
 func TestUpdate(t *testing.T) {
 	assert.Nil(t, testDB.emptyReputationTable())
+	assert.NotNil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
 	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
 	assert.Nil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
 	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
