@@ -21,8 +21,8 @@
     "request": "2.75.0"
   },
   "devDependencies": {
-    "ass": "git://github.com/jrgm/ass.git#5be99ee7abc9fcf63f9ebcc37b151b9c822146d1",
     "eslint-config-fxa": "2.1.0",
+    "coveralls": "2.11.14",
     "grunt": "1.0.1",
     "grunt-bump": "0.8.0",
     "grunt-cli": "1.2.0",
@@ -30,6 +30,7 @@
     "grunt-eslint": "18.0.0",
     "grunt-nsp": "2.3.1",
     "load-grunt-tasks": "3.5.0",
+    "nyc": "8.3.2",
     "tap": "6.2.0",
     "walk": "2.3.x"
   },
