@@ -21,7 +21,6 @@
     "request": "2.75.0"
   },
   "devDependencies": {
-    "eslint-config-fxa": "2.1.0",
     "coveralls": "2.11.14",
     "grunt": "1.0.1",
     "grunt-bump": "0.8.0",
