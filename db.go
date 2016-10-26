@@ -1,6 +1,7 @@
 package tigerblood
 
 import (
+	"log"
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
@@ -41,7 +42,7 @@ type ReputationEntry struct {
 
 type ViolationReputationWeightEntry struct {
 	ViolationType string
-	Reputation uint
+	ReputationPenalty uint
 }
 
 // NewDB creates a new DB instance from a DSN.
@@ -167,13 +168,15 @@ func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) er
 	return err
 }
 
-// InsertOrUpdateReputationEntryToMin inserts a single ReputationEntry into the database, and if it already exists, it updates it if the new reputation is lower
-func (db DB) InsertOrUpdateReputationEntryToMin(tx *sql.Tx, entry ReputationEntry) error {
+// InsertOrUpdateReputationPenalty applies a reputationPenalty to the
+// default reputation (100) and inserts a reputationEntry or updates
+// an reputationEntry with the penalty
+func (db DB) InsertOrUpdateReputationPenalty(tx *sql.Tx, ip string, reputationPenalty uint) error {
 	exec := db.Exec
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2) ON CONFLICT (ip) DO UPDATE SET reputation = LEAST(excluded.reputation, reputation.reputation);", entry.IP, entry.Reputation)
+	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, 100 - $2) ON CONFLICT (ip) DO UPDATE SET reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - $2));", ip, reputationPenalty)
 	return err
 }
 
@@ -234,7 +237,7 @@ func (db DB) InsertViolationReputationWeightEntry(tx *sql.Tx, entry ViolationRep
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO violation_reputation_weights (violation_type, reputation) VALUES ($1, $2);", entry.ViolationType, entry.Reputation)
+	_, err := exec("INSERT INTO violation_reputation_weights (violation_type, reputation) VALUES ($1, $2);", entry.ViolationType, entry.ReputationPenalty)
 	if pqErr, ok := err.(*pq.Error); ok {
 		if pqErr.Code == pgCheckViolationErrorCode {
 			return CheckViolationError{pqErr}
@@ -253,28 +256,26 @@ func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	return err
 }
 
+// unknown violations have no effect on reputation
+const unknownViolationPenalty = 0
+
 // Find the reputation to set an IP's reputation to for the given violation type
 func (db DB) SelectViolationReputationWeightEntry(violationType string) (ViolationReputationWeightEntry, error) {
 	var entry ViolationReputationWeightEntry
-	err := db.violationReputationWeightSelectStmt.QueryRow(violationType).Scan(&entry.ViolationType, &entry.Reputation)
+	err := db.violationReputationWeightSelectStmt.QueryRow(violationType).Scan(&entry.ViolationType, &entry.ReputationPenalty)
+	if err == sql.ErrNoRows {
+		log.Printf("Could not find reputation to set for violation type: %s", violationType)
+		entry = ViolationReputationWeightEntry{ViolationType: "Unknown", ReputationPenalty: unknownViolationPenalty}
+	}
 	return entry, err
 }
 
-// Insert or update the IP's reputation to the smallest reputation for the given violation type
+// Insert or update the IP's reputation after subtracting a penalty for the violation type
 func (db DB) InsertOrUpdateReputationEntryByViolationType(tx *sql.Tx, ip string, violation_type string) error {
-	var reputation uint
 	violation_entry, err := db.SelectViolationReputationWeightEntry(violation_type)
-	switch {
-	case err == sql.ErrNoRows:
-		reputation = 100  // unknown violations have no effect on reputation
-	case err != nil:
-		fmt.Errorf("Error finding reputation for violation type: %s", err)
-	default:
-		reputation = violation_entry.Reputation
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("Error finding reputation for violation type: %s", err)
 	}
-	err = db.InsertOrUpdateReputationEntryToMin(nil, ReputationEntry{
-		IP:         ip,
-		Reputation: reputation,
-	})
+	err = db.InsertOrUpdateReputationPenalty(nil, ip, violation_entry.ReputationPenalty)
 	return err
 }

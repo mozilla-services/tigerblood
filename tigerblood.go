@@ -74,6 +74,13 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/__version__":
 		h.handleVersion(w, r)
 		return
+	case "/violations":
+		switch r.Method {
+		case "PUT":
+			h.UpsertReputationByViolation(w, r)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	default:
 		switch r.Method {
 		case "GET":
@@ -239,4 +246,53 @@ func (h *TigerbloodHandler) DeleteReputation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// UpsertReputationByViolation takes a JSON body from the http request
+// and upserts the reputation entry on the database to the reputation
+// given in reputation violation.  The HTTP requests path has to
+// contain the IP to be updated, in CIDR notation. For example:
+// {"Violation": "password-reset-rate-limit-exceeded"}
+func (h *TigerbloodHandler) UpsertReputationByViolation(w http.ResponseWriter, r *http.Request) {
+	splitPath := strings.Split(r.URL.Path, "/")
+	if len(splitPath) != 3 {
+		log.Printf("Path format is invalid: %s", r.URL.Path)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ip, err := IPAddressFromHTTPPath("/" + splitPath[2])
+
+	if err != nil {
+		// This means there was no IP address found in the path
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
+		return
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error reading body: %s", err)
+		return
+	}
+	type ViolationBody struct {
+		Violation string
+	}
+	var entry ViolationBody
+	err = json.Unmarshal(body, &entry)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Could not unmarshal request body: %s", err)
+		return
+	}
+
+	err = h.db.InsertOrUpdateReputationEntryByViolationType(nil, ip, entry.Violation)
+	if _, ok := err.(CheckViolationError); ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Reputation is outside of valid range [0-100]"))
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Could not update reputation entry by violation: %s", err)
+	} else if err == nil {
+		w.WriteHeader(http.StatusNoContent)
+	}
 }

@@ -177,15 +177,11 @@ reputation.
 {
   "type": "object",
   "properties": {
-    "IP": {
-      "type": "string"
-    },
     "Violation": {
       "type": "string"
     }
   },
   "required": [
-    "IP",
     "Violation"
   ]
 }
@@ -194,4 +190,4 @@ reputation.
 * Response body: None
 * Successful response status code: 204 No Content
 
-Example: `curl -d '{"IP": "240.0.0.1", "violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
