@@ -123,6 +123,20 @@ func (db DB) CreateTables() error {
 	return nil
 }
 
+// EmptyTables truncates the tigerblood tables
+func (db DB) EmptyTables() error {
+	err := db.emptyReputationTable()
+	if err != nil {
+		return fmt.Errorf("Could not truncate reputation table: %s", err)
+	}
+	err = db.emptyViolationReputationWeightsTable()
+	if err != nil {
+		return fmt.Errorf("Could not truncate violation reputation weights table: %s", err)
+	}
+	return nil
+}
+
+
 func (db DB) createReputationTable() error {
 	_, err := db.Query(createReputationTableSQL)
 	return err
@@ -152,6 +166,17 @@ func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) er
 	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2) ON CONFLICT (ip) DO UPDATE SET reputation = $2;", entry.IP, entry.Reputation)
 	return err
 }
+
+// InsertOrUpdateReputationEntryToMin inserts a single ReputationEntry into the database, and if it already exists, it updates it if the new reputation is lower
+func (db DB) InsertOrUpdateReputationEntryToMin(tx *sql.Tx, entry ReputationEntry) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2) ON CONFLICT (ip) DO UPDATE SET reputation = LEAST(excluded.reputation, reputation.reputation);", entry.IP, entry.Reputation)
+	return err
+}
+
 
 // InsertReputationEntry inserts a single ReputationEntry into the database
 func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
@@ -203,6 +228,21 @@ func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	return entry, err
 }
 
+// inserts a single ViolationReputationWeightEntry into the database
+func (db DB) InsertViolationReputationWeightEntry(tx *sql.Tx, entry ViolationReputationWeightEntry) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	_, err := exec("INSERT INTO violation_reputation_weights (violation_type, reputation) VALUES ($1, $2);", entry.ViolationType, entry.Reputation)
+	if pqErr, ok := err.(*pq.Error); ok {
+		if pqErr.Code == pgCheckViolationErrorCode {
+			return CheckViolationError{pqErr}
+		}
+	}
+	return err
+}
+
 // DeleteReputationEntry deletes an entry from the database based on the entry's IP address
 func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	exec := db.Exec
@@ -210,5 +250,31 @@ func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 		exec = tx.Exec
 	}
 	_, err := exec("DELETE FROM reputation WHERE ip = $1;", entry.IP)
+	return err
+}
+
+// Find the reputation to set an IP's reputation to for the given violation type
+func (db DB) SelectViolationReputationWeightEntry(violationType string) (ViolationReputationWeightEntry, error) {
+	var entry ViolationReputationWeightEntry
+	err := db.violationReputationWeightSelectStmt.QueryRow(violationType).Scan(&entry.ViolationType, &entry.Reputation)
+	return entry, err
+}
+
+// Insert or update the IP's reputation to the smallest reputation for the given violation type
+func (db DB) InsertOrUpdateReputationEntryByViolationType(tx *sql.Tx, ip string, violation_type string) error {
+	var reputation uint
+	violation_entry, err := db.SelectViolationReputationWeightEntry(violation_type)
+	switch {
+	case err == sql.ErrNoRows:
+		reputation = 100  // unknown violations have no effect on reputation
+	case err != nil:
+		fmt.Errorf("Error finding reputation for violation type: %s", err)
+	default:
+		reputation = violation_entry.Reputation
+	}
+	err = db.InsertOrUpdateReputationEntryToMin(nil, ReputationEntry{
+		IP:         ip,
+		Reputation: reputation,
+	})
 	return err
 }
