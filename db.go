@@ -31,10 +31,16 @@ var ErrNoRowsAffected = fmt.Errorf("No rows affected")
 type DB struct {
 	*sql.DB
 	reputationSelectStmt *sql.Stmt
+	violationReputationWeightSelectStmt *sql.Stmt
 }
 
 type ReputationEntry struct {
 	IP         string
+	Reputation uint
+}
+
+type ViolationReputationWeightEntry struct {
+	ViolationType string
 	Reputation uint
 }
 
@@ -61,6 +67,13 @@ func NewDB(dsn string) (*DB, error) {
 		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
 	}
 	newDB.reputationSelectStmt = reputationSelectStmt
+
+	violationReputationWeightSelectStmt, err := db.Prepare("SELECT violation_type, reputation FROM violation_reputation_weights WHERE violation_type = $1 LIMIT 1;")
+	if err != nil {
+		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
+	}
+	newDB.violationReputationWeightSelectStmt = violationReputationWeightSelectStmt
+
 	return newDB, nil
 }
 
@@ -74,6 +87,18 @@ CREATE INDEX IF NOT EXISTS reputation_ip_idx ON reputation USING gist (ip);
 
 const emptyReputationTableSQL = `
 TRUNCATE TABLE reputation;
+`
+
+const createViolationReputationWeightsTableSQL = `
+CREATE TABLE IF NOT EXISTS violation_reputation_weights (
+violation_type varchar(128) PRIMARY KEY NOT NULL,
+reputation int NOT NULL CHECK (reputation >= 0 AND reputation <= 100),
+UNIQUE (violation_type, reputation)
+);
+`
+
+const emptyViolationReputationWeightsTableSQL = `
+TRUNCATE TABLE violation_reputation_weights;
 `
 
 // Close closes the database
@@ -91,6 +116,10 @@ func (db DB) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Could not create reputation table: %s", err)
 	}
+	err = db.createViolationReputationWeightsTable()
+	if err != nil {
+		return fmt.Errorf("Could not create violation reputation weights table: %s", err)
+	}
 	return nil
 }
 
@@ -101,6 +130,16 @@ func (db DB) createReputationTable() error {
 
 func (db DB) emptyReputationTable() error {
 	_, err := db.Query(emptyReputationTableSQL)
+	return err
+}
+
+func (db DB) createViolationReputationWeightsTable() error {
+	_, err := db.Query(createViolationReputationWeightsTableSQL)
+	return err
+}
+
+func (db DB) emptyViolationReputationWeightsTable() error {
+	_, err := db.Query(emptyViolationReputationWeightsTableSQL)
 	return err
 }
 
