@@ -17,13 +17,13 @@ var generateHawkHeader = function (credentials, requestOptions) {
 }
 
 /**
- * @class IPReputationClient
+ * @class IPReputationServiceClient
  * @constructor
  * @param {Object} config
  *   @param {String} config.host
  *   @param {Number} config.port
- *   @param {id} config.id id for the HAWK header
- *   @param {id} config.key key for the HAWK header
+ *   @param {String} config.id id for the HAWK header
+ *   @param {String} config.key key for the HAWK header
  * @return {IPReputationServiceClient}
  */
 var client = function(config) {
