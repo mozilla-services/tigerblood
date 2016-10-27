@@ -90,7 +90,7 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.statsd.Histogram("request.duration", float64(time.Since(startTime).Nanoseconds())/float64(1e6), nil, 1)
 	}
 	if time.Since(startTime).Nanoseconds() > 1e7 {
-		log.Printf("Request took %s to proces\n", time.Since(startTime))
+		log.Printf("Request took %s to process\n", time.Since(startTime))
 	}
 }
 
