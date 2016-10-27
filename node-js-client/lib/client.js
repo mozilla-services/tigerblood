@@ -18,7 +18,6 @@ var clientConfigSchema = Joi.object().keys({
 var generateHawkHeader = function (credentials, requestOptions) {
   var header = hawk.client.header(requestOptions.uri, requestOptions.method, {
     credentials: credentials,
-    ext: '',
     contentType: 'application/json',
     payload: requestOptions.body ? requestOptions.body : ''
   });
