@@ -49,12 +49,10 @@ client.prototype.get = function (ip) {
   var requestOptions = {
     uri: this.baseUrl + ip,
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     hawk: {
       credentials: this.credentials
     },
+    json: true,
     timeout: this.timeout
   };
 
@@ -72,13 +70,10 @@ client.prototype.add = function (ip, reputation) {
   var requestOptions = {
     uri: this.baseUrl,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     hawk: {
       credentials: this.credentials
     },
-    body: JSON.stringify({'ip': ip, 'reputation': reputation}),
+    json: {'ip': ip, 'reputation': reputation},
     timeout: this.timeout
   };
 
@@ -95,13 +90,10 @@ client.prototype.update = function (ip, reputation) {
   var requestOptions = {
     uri: this.baseUrl + ip,
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     hawk: {
       credentials: this.credentials
     },
-    body: JSON.stringify({'reputation': reputation}),
+    json: {'reputation': reputation},
     timeout: this.timeout
   };
 
@@ -117,12 +109,10 @@ client.prototype.remove = function (ip) {
   var requestOptions = {
     uri: this.baseUrl + ip,
     method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     hawk: {
       credentials: this.credentials
     },
+    json: true,
     timeout: this.timeout
   };
 

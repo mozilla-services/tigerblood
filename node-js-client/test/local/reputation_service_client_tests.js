@@ -44,7 +44,7 @@ test(
   function (t) {
     client.update('127.0.0.1', 5).then(function (response) {
       t.equal(response.statusCode, 404);
-      t.equal(response.body, '');
+      t.equal(response.body, undefined);
       t.end();
     });
   }
@@ -55,7 +55,7 @@ test(
   function (t) {
     client.remove('127.0.0.1').then(function (response) {
       t.equal(response.statusCode, 200);
-      t.equal(response.body, '');
+      t.equal(response.body, undefined);
       t.end();
     });
   }
@@ -79,7 +79,7 @@ test(
   function (t) {
     client.add('127.0.0.1', 50).then(function (response) {
       t.equal(response.statusCode, 500);
-      t.equal(response.body, '');
+      t.equal(response.body, undefined);
       t.end();
     });
   }
@@ -90,7 +90,7 @@ test(
   function (t) {
     client.get('127.0.0.1').then(function (response) {
       t.equal(response.statusCode, 200);
-      t.equal(response.body, '{"IP":"127.0.0.1","Reputation":50}');
+      t.deepEqual(response.body, {'IP':'127.0.0.1','Reputation':50});
       t.end();
     });
   }
@@ -101,7 +101,7 @@ test(
   function (t) {
     client.update('127.0.0.1', 5).then(function (response) {
       t.equal(response.statusCode, 200);
-      t.equal(response.body, '');
+      t.equal(response.body, undefined);
       t.end();
     });
   }
@@ -112,11 +112,11 @@ test(
   function (t) {
     client.remove('127.0.0.1').then(function (response) {
       t.equal(response.statusCode, 200);
-      t.equal(response.body, '');
+      t.equal(response.body, undefined);
       return client.get('127.0.0.1'); // verify removed IP is actually gone
     }).then(function (response) {
       t.equal(response.statusCode, 404);
-      t.equal(response.body, '');
+      t.equal(response.body, undefined); // JSON.stringify() -> undefined
       t.end();
     });
   }
