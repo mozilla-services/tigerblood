@@ -13,11 +13,17 @@ var client = new IPReputationClient({
 test(
   'throws exception when missing required config values',
   function (t) {
-    t.throws(function () { new IPReputationClient({}); });
-    t.throws(function () { new IPReputationClient({port: 8080, id: 'root', key: 'toor'}); });
-    t.throws(function () { new IPReputationClient({host: '127.0.0.1', id: 'root', key: 'toor'}); });
-    t.throws(function () { new IPReputationClient({host: '127.0.0.1', port: 8080, key: 'toor'}); });
-    t.throws(function () { new IPReputationClient({host: '127.0.0.1', port: 8080, id: 'root'}); });
+    [
+      {},
+      {port: 8080, id: 'root', key: 'toor'},
+      {host: '127.0.0.1', id: 'root', key: 'toor'},
+      {host: '127.0.0.1', port: 8080, key: 'toor'},
+      {host: '127.0.0.1', port: 8080, id: 'root'}
+    ].forEach(function (badConfig) {
+      t.throws(function () {
+        return new IPReputationClient(badConfig);
+      });
+    });
     t.end();
   }
 );
