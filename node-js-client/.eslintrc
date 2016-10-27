@@ -1,2 +1,4 @@
+extends: fxa
+
 rules:
   handle-callback-err: 0

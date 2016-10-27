@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var request = require('request')
-var hawk = require('hawk')
+var request = require('request');
+var hawk = require('hawk');
 
 var generateHawkHeader = function (credentials, requestOptions) {
   var header = hawk.client.header(requestOptions.uri, requestOptions.method, {
@@ -11,10 +11,10 @@ var generateHawkHeader = function (credentials, requestOptions) {
     ext: '',
     contentType: 'application/json',
     payload: requestOptions.body ? requestOptions.body : ''
-  })
+  });
 
-  return header
-}
+  return header;
+};
 
 /**
  * @class IPReputationServiceClient
@@ -24,29 +24,30 @@ var generateHawkHeader = function (credentials, requestOptions) {
  *   @param {Number} config.port
  *   @param {String} config.id id for the HAWK header
  *   @param {String} config.key key for the HAWK header
+ *   @param {Number} config.timeout positive integer of the number of milliseconds to wait for a server to send response headers (passed as parameter of the same name to https://github.com/request/request)
  * @return {IPReputationServiceClient}
  */
 var client = function(config) {
   if (!Object.prototype.hasOwnProperty.call(config, 'host')) {
-    throw new Error('Missing required param host for IP Reputation Client.')
+    throw new Error('Missing required param host for IP Reputation Client.');
   } else if (!Object.prototype.hasOwnProperty.call(config, 'port')) {
-    throw 'Missing required param port for IP Reputation Client.'
+    throw new Error('Missing required param port for IP Reputation Client.');
   } else if (!Object.prototype.hasOwnProperty.call(config, 'id')) {
-    throw 'Missing required param (hawk) id for IP Reputation Client.'
+    throw new Error('Missing required param (hawk) id for IP Reputation Client.');
   } else if (!Object.prototype.hasOwnProperty.call(config, 'key')) {
-    throw 'Missing required param (hawk) key for IP Reputation Client.'
+    throw new Error('Missing required param (hawk) key for IP Reputation Client.');
   }
 
-  this.baseUrl = 'http://' + config.host + ':' + config.port + '/'
+  this.baseUrl = 'http://' + config.host + ':' + config.port + '/';
 
   this.credentials = {
     id: config.id,
     key: config.key,
     algorithm: 'sha256'
-  }
+  };
 
-  return this
-}
+  return this;
+};
 
 /**
  * @method get
@@ -61,13 +62,13 @@ client.prototype.get = function (ip, callback) {
     headers: {
       'Content-Type': 'application/json'
     }
-  }
+  };
 
-  var header = generateHawkHeader(this.credentials, requestOptions)
-  requestOptions.headers.Authorization = header.field
+  var header = generateHawkHeader(this.credentials, requestOptions);
+  requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback)
-}
+  request(requestOptions, callback);
+};
 
 
 /**
@@ -85,13 +86,13 @@ client.prototype.add = function (ip, reputation, callback) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({'ip': ip, 'reputation': reputation})
-  }
+  };
 
-  var header = generateHawkHeader(this.credentials, requestOptions)
-  requestOptions.headers.Authorization = header.field
+  var header = generateHawkHeader(this.credentials, requestOptions);
+  requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback)
-}
+  request(requestOptions, callback);
+};
 
 /**
  * @method update
@@ -108,13 +109,13 @@ client.prototype.update = function (ip, reputation, callback) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({'reputation': reputation})
-  }
+  };
 
-  var header = generateHawkHeader(this.credentials, requestOptions)
-  requestOptions.headers.Authorization = header.field
+  var header = generateHawkHeader(this.credentials, requestOptions);
+  requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback)
-}
+  request(requestOptions, callback);
+};
 
 /**
  * @method remove
@@ -129,12 +130,12 @@ client.prototype.remove = function (ip, callback) {
     headers: {
       'Content-Type': 'application/json'
     }
-  }
+  };
 
-  var header = generateHawkHeader(this.credentials, requestOptions)
-  requestOptions.headers.Authorization = header.field
+  var header = generateHawkHeader(this.credentials, requestOptions);
+  requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback)
-}
+  request(requestOptions, callback);
+};
 
-module.exports = client
+module.exports = client;

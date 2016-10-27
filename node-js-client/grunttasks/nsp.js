@@ -3,10 +3,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 module.exports = function (grunt) {
-  'use strict'
+  'use strict';
 
   grunt.config('nsp', {
     output: 'summary',
     package: grunt.file.readJSON('package.json')
-  })
-}
+  });
+};
