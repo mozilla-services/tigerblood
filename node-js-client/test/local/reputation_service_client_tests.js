@@ -38,7 +38,7 @@ test(
   function (t) {
     client.update('127.0.0.1', 5, function (error, response, body) {
       t.equal(error, null);
-      t.equal(response.statusCode, 200);
+      t.equal(response.statusCode, 404);
       t.equal(body, '');
       t.end();
     });
