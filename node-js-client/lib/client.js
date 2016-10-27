@@ -46,6 +46,7 @@ var client = function(config) {
     algorithm: 'sha256'
   };
 
+  this.timeout = config.timeout || 30 * 1000;
   return this;
 };
 
@@ -61,7 +62,8 @@ client.prototype.get = function (ip, callback) {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    timeout: this.timeout
   };
 
   var header = generateHawkHeader(this.credentials, requestOptions);
@@ -85,7 +87,8 @@ client.prototype.add = function (ip, reputation, callback) {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({'ip': ip, 'reputation': reputation})
+    body: JSON.stringify({'ip': ip, 'reputation': reputation}),
+    timeout: this.timeout
   };
 
   var header = generateHawkHeader(this.credentials, requestOptions);
@@ -108,7 +111,8 @@ client.prototype.update = function (ip, reputation, callback) {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({'reputation': reputation})
+    body: JSON.stringify({'reputation': reputation}),
+    timeout: this.timeout
   };
 
   var header = generateHawkHeader(this.credentials, requestOptions);
@@ -129,7 +133,8 @@ client.prototype.remove = function (ip, callback) {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    timeout: this.timeout
   };
 
   var header = generateHawkHeader(this.credentials, requestOptions);

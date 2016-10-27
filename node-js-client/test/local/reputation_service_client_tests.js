@@ -117,3 +117,21 @@ test(
     });
   }
 );
+
+test(
+  'times out a GET request',
+  function (t) {
+    var timeoutClient = new IPReputationClient({
+      host: '10.0.0.0', // a non-routable host
+      port: 8080,
+      id: 'root',
+      key: 'toor',
+      timeout: 1 // ms
+    });
+
+    timeoutClient.get('127.0.0.1', function (error, response, body) {
+      t.notEqual(error.code, null);
+      t.end();
+    });
+  }
+);
