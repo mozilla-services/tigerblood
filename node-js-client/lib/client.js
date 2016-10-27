@@ -2,9 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+var Promise = require('bluebird');
 var hawk = require('hawk');
 var Joi = require('joi');
-var request = require('request');
+var request = Promise.promisify(require('request'));
 
 var clientConfigSchema = Joi.object().keys({
   host: Joi.string().hostname().required(),
@@ -54,10 +55,9 @@ var client = function(config) {
 /**
  * @method get
  * @param {String} an IP address to fetch reputation for
- * @param {Function} request callback called with args error, http.IncomingMessage, and body.
- * @return {undefined}
+ * @return {Promise}
  */
-client.prototype.get = function (ip, callback) {
+client.prototype.get = function (ip) {
   var requestOptions = {
     uri: this.baseUrl + ip,
     method: 'GET',
@@ -70,7 +70,7 @@ client.prototype.get = function (ip, callback) {
   var header = generateHawkHeader(this.credentials, requestOptions);
   requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback);
+  return request(requestOptions);
 };
 
 
@@ -78,10 +78,9 @@ client.prototype.get = function (ip, callback) {
  * @method add
  * @param {String} an IP address to assign a reputation
  * @param {Number} a reputation/trust value from 0 to 100 inclusive (higher is more trustworthy)
- * @param {Function} request callback called with args error, http.IncomingMessage, and body.
- * @return {undefined}
+ * @return {Promise}
  */
-client.prototype.add = function (ip, reputation, callback) {
+client.prototype.add = function (ip, reputation) {
   var requestOptions = {
     uri: this.baseUrl,
     method: 'POST',
@@ -95,17 +94,16 @@ client.prototype.add = function (ip, reputation, callback) {
   var header = generateHawkHeader(this.credentials, requestOptions);
   requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback);
+  return request(requestOptions);
 };
 
 /**
  * @method update
  * @param {String} an IP address to change a reputation for
  * @param {Number} a reputation/trust value from 0 to 100 inclusive (higher is more trustworthy)
- * @param {Function} request callback called with args error, http.IncomingMessage, and body.
- * @return {undefined}
+ * @return {Promise}
  */
-client.prototype.update = function (ip, reputation, callback) {
+client.prototype.update = function (ip, reputation) {
   var requestOptions = {
     uri: this.baseUrl + ip,
     method: 'PUT',
@@ -119,16 +117,15 @@ client.prototype.update = function (ip, reputation, callback) {
   var header = generateHawkHeader(this.credentials, requestOptions);
   requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback);
+  return request(requestOptions);
 };
 
 /**
  * @method remove
  * @param {String} an IP address to remove an associated reputation for
- * @param {Function} request callback called with args error, http.IncomingMessage, and body.
- * @return {undefined}
+ * @return {Promise}
  */
-client.prototype.remove = function (ip, callback) {
+client.prototype.remove = function (ip) {
   var requestOptions = {
     uri: this.baseUrl + ip,
     method: 'DELETE',
@@ -141,7 +138,7 @@ client.prototype.remove = function (ip, callback) {
   var header = generateHawkHeader(this.credentials, requestOptions);
   requestOptions.headers.Authorization = header.field;
 
-  request(requestOptions, callback);
+  return request(requestOptions);
 };
 
 module.exports = client;
