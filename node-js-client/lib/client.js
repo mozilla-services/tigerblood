@@ -2,8 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var request = require('request');
 var hawk = require('hawk');
+var Joi = require('joi');
+var request = require('request');
+
+var clientConfigSchema = Joi.object().keys({
+  host: Joi.string().hostname().required(),
+  port: Joi.number().integer().min(1).max(1 << 16).required(),
+  id: Joi.string().required(),
+  key: Joi.string().required(),
+  timeout: Joi.number().integer().positive()
+});
 
 var generateHawkHeader = function (credentials, requestOptions) {
   var header = hawk.client.header(requestOptions.uri, requestOptions.method, {
@@ -28,15 +37,7 @@ var generateHawkHeader = function (credentials, requestOptions) {
  * @return {IPReputationServiceClient}
  */
 var client = function(config) {
-  if (!Object.prototype.hasOwnProperty.call(config, 'host')) {
-    throw new Error('Missing required param host for IP Reputation Client.');
-  } else if (!Object.prototype.hasOwnProperty.call(config, 'port')) {
-    throw new Error('Missing required param port for IP Reputation Client.');
-  } else if (!Object.prototype.hasOwnProperty.call(config, 'id')) {
-    throw new Error('Missing required param (hawk) id for IP Reputation Client.');
-  } else if (!Object.prototype.hasOwnProperty.call(config, 'key')) {
-    throw new Error('Missing required param (hawk) key for IP Reputation Client.');
-  }
+  Joi.assert(config, clientConfigSchema);
 
   this.baseUrl = 'http://' + config.host + ':' + config.port + '/';
 
