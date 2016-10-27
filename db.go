@@ -14,6 +14,15 @@ func (e CheckViolationError) Error() string {
 	return e.Inner.Error()
 }
 
+type DuplicateKeyError struct {
+	Inner *pq.Error
+}
+
+func (e DuplicateKeyError) Error() string {
+	return e.Inner.Error()
+}
+
+const pgDuplicateKeyErrorCode = "23505"
 const pgCheckViolationErrorCode = "23514"
 
 var ErrNoRowsAffected = fmt.Errorf("No rows affected")
@@ -113,8 +122,11 @@ func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	}
 	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2);", entry.IP, entry.Reputation)
 	if pqErr, ok := err.(*pq.Error); ok {
-		if pqErr.Code == pgCheckViolationErrorCode {
+		switch pqErr.Code {
+		case pgCheckViolationErrorCode:
 			return CheckViolationError{pqErr}
+		case pgDuplicateKeyErrorCode:
+			return DuplicateKeyError{pqErr}
 		}
 	}
 	return err
