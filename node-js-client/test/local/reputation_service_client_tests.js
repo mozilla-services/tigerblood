@@ -113,6 +113,10 @@ test(
     client.remove('127.0.0.1').then(function (response) {
       t.equal(response.statusCode, 200);
       t.equal(response.body, '');
+      return client.get('127.0.0.1'); // verify removed IP is actually gone
+    }).then(function (response) {
+      t.equal(response.statusCode, 404);
+      t.equal(response.body, '');
       t.end();
     });
   }
