@@ -3,7 +3,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var Promise = require('bluebird');
-var hawk = require('hawk');
 var Joi = require('joi');
 var request = Promise.promisify(require('request'));
 
@@ -14,16 +13,6 @@ var clientConfigSchema = Joi.object().keys({
   key: Joi.string().required(),
   timeout: Joi.number().integer().positive()
 });
-
-var generateHawkHeader = function (credentials, requestOptions) {
-  var header = hawk.client.header(requestOptions.uri, requestOptions.method, {
-    credentials: credentials,
-    contentType: 'application/json',
-    payload: requestOptions.body ? requestOptions.body : ''
-  });
-
-  return header;
-};
 
 /**
  * @class IPReputationServiceClient
@@ -63,11 +52,11 @@ client.prototype.get = function (ip) {
     headers: {
       'Content-Type': 'application/json'
     },
+    hawk: {
+      credentials: this.credentials
+    },
     timeout: this.timeout
   };
-
-  var header = generateHawkHeader(this.credentials, requestOptions);
-  requestOptions.headers.Authorization = header.field;
 
   return request(requestOptions);
 };
@@ -86,12 +75,12 @@ client.prototype.add = function (ip, reputation) {
     headers: {
       'Content-Type': 'application/json'
     },
+    hawk: {
+      credentials: this.credentials
+    },
     body: JSON.stringify({'ip': ip, 'reputation': reputation}),
     timeout: this.timeout
   };
-
-  var header = generateHawkHeader(this.credentials, requestOptions);
-  requestOptions.headers.Authorization = header.field;
 
   return request(requestOptions);
 };
@@ -109,12 +98,12 @@ client.prototype.update = function (ip, reputation) {
     headers: {
       'Content-Type': 'application/json'
     },
+    hawk: {
+      credentials: this.credentials
+    },
     body: JSON.stringify({'reputation': reputation}),
     timeout: this.timeout
   };
-
-  var header = generateHawkHeader(this.credentials, requestOptions);
-  requestOptions.headers.Authorization = header.field;
 
   return request(requestOptions);
 };
@@ -131,11 +120,11 @@ client.prototype.remove = function (ip) {
     headers: {
       'Content-Type': 'application/json'
     },
+    hawk: {
+      credentials: this.credentials
+    },
     timeout: this.timeout
   };
-
-  var header = generateHawkHeader(this.credentials, requestOptions);
-  requestOptions.headers.Authorization = header.field;
 
   return request(requestOptions);
 };
