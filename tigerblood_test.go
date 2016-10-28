@@ -125,6 +125,10 @@ func TestCreateEntry(t *testing.T) {
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(20), entry.Reputation)
+
+	recorder = httptest.ResponseRecorder{}
+	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusConflict, recorder.Code)
 }
 
 func TestCreateEntryInvalidReputation(t *testing.T) {

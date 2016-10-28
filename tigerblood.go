@@ -135,6 +135,9 @@ func (h *TigerbloodHandler) CreateReputation(w http.ResponseWriter, r *http.Requ
 	if _, ok := err.(CheckViolationError); ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Reputation is outside of valid range [0-100]"))
+	} else if _, ok := err.(DuplicateKeyError); ok {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte("Reputation is already set for that IP."))
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
