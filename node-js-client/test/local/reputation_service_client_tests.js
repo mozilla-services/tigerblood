@@ -78,8 +78,8 @@ test(
   'does not add reputation for existing IP',
   function (t) {
     client.add('127.0.0.1', 50).then(function (response) {
-      t.equal(response.statusCode, 500);
-      t.equal(response.body, undefined);
+      t.equal(response.statusCode, 409);
+      t.equal(response.body, 'Reputation is already set for that IP.');
       t.end();
     });
   }
