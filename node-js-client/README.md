@@ -53,14 +53,27 @@ client.remove('127.0.0.1').then(function (response) {
 });
 ```
 
+Send a violation for an IP:
+
+```js
+client.sendViolation('127.0.0.1', 'exceeded-password-reset-failure-rate-limit').then(function (response) {
+    console.log('Upserted reputation for 127.0.0.1.');
+});
+```
+
 ## Development
 
-1. run tigerblood with a new database (`docker run --name postgres -p 127.0.0.1:5432:5432 -d postgres-ip4r`) and the following `config.yml`:
+1. Create the following `config.yml` in project root:
 
 ```yml
 credentials:
   root: toor
 ```
 
-2. install this library with `npm install`
-3. run `npm test` to test the client against the tigerblood server
+1. run tigerblood with a new database (`docker run --name postgres -p 127.0.0.1:5432:5432 -d postgres-ip4r`)
+1. install this library with `npm install`
+1. run db setup script: `scripts/setup-test-db.sh`
+1. run tigerblood from the project root: `CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/ && TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" ./tigerblood`
+1. run `npm test` to test the client against the tigerblood server
+1. stop the tigerblood server
+1. run db cleanup script: `scripts/cleanup-test-db.sh`

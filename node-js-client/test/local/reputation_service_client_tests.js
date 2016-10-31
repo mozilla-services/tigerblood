@@ -139,3 +139,20 @@ test(
     });
   }
 );
+
+test(
+  'sends a violation',
+  function (t) {
+    client.get('127.0.0.1').then(function (response) {
+      t.equal(response.statusCode, 404);
+      return client.sendViolation('127.0.0.1', 'test_violation'); // created in scripts setup-test-db.sh
+    }).then(function (response) {
+      t.equal(response.statusCode, 204);
+      return client.get('127.0.0.1');
+    }).then(function (response) {
+      t.equal(response.statusCode, 200);
+      t.deepEqual(response.body, {'IP':'127.0.0.1','Reputation':70});
+      t.end();
+    });
+  }
+);

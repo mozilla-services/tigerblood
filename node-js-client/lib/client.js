@@ -119,4 +119,24 @@ client.prototype.remove = function (ip) {
   return request(requestOptions);
 };
 
+/**
+ * @method sendViolation
+ * @param {String} an IP address to record a violation for
+ * @param {String} an violation type to save lookup the reputation penalty for
+ * @return {Promise}
+ */
+client.prototype.sendViolation = function (ip, violationType) {
+  var requestOptions = {
+    uri: this.baseUrl + 'violations/' + ip,
+    method: 'PUT',
+    hawk: {
+      credentials: this.credentials
+    },
+    json: {'ip': ip, 'Violation': violationType},
+    timeout: this.timeout
+  };
+
+  return request(requestOptions);
+};
+
 module.exports = client;
