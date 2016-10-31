@@ -14,7 +14,7 @@ If you don't want to install postgres, you can do this from a docker container:
 - From this shell, run `psql -U postgres`. You should get a postgres prompt.
 - Run the following SQL to create the `tigerblood` user and database:
   ```sql
-  
+
   CREATE ROLE tigerblood WITH LOGIN;
   CREATE DATABASE tigerblood;
   GRANT ALL PRIVILEGES ON DATABASE tigerblood TO tigerblood;
@@ -161,3 +161,33 @@ Example: `curl http://tigerblood/__heartbeat__`
 * Successful response status code: 200
 
 Example: `curl http://tigerblood/__version__`
+
+#### PUT /violations/{ip}
+
+Sets or updates the reputation for an IP address or network to the
+reputation for the violation type found in the
+`violation_reputation_weights` table if it is lower than the current
+reputation.
+
+
+* Request parameters: None
+* Request body: a JSON object with the schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "Violation": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "Violation"
+  ]
+}
+```
+
+* Response body: None
+* Successful response status code: 204 No Content
+
+Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`

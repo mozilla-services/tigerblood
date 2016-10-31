@@ -180,3 +180,39 @@ func TestDeleteEntry(t *testing.T) {
 	_, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.NotNil(t, err)
 }
+
+func TestInsertReputationByViolation(t *testing.T) {
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	err = db.EmptyTables()
+	assert.Nil(t, err)
+	assert.Nil(t, testDB.InsertViolationReputationWeightEntry(nil, ViolationReputationWeightEntry{ViolationType: "TestViolation", ReputationPenalty: 90}))
+
+	h := NewTigerbloodHandler(db, nil)
+	recorder := httptest.ResponseRecorder{}
+	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "TestViolation"}`)))
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+
+	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(10), entry.Reputation)
+
+	// update with unknown type
+	recorder = httptest.ResponseRecorder{}
+	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+
+	entry, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(10), entry.Reputation)
+
+	// test parsing invalid URL
+	recorder = httptest.ResponseRecorder{}
+	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	recorder = httptest.ResponseRecorder{}
+	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations////", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+}
