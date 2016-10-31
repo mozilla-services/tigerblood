@@ -52,15 +52,15 @@ func IPAddressFromHTTPPath(path string) (string, error) {
 
 func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
-	switch r.URL.Path {
-	case "/":
+	switch {
+	case r.URL.Path == "/":
 		switch r.Method {
 		case "POST":
 			h.CreateReputation(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	case "/__heartbeat__":
+	case r.URL.Path == "/__heartbeat__":
 		err := h.db.Ping()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -68,13 +68,13 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}
 		return
-	case "/__lbheartbeat__":
+	case r.URL.Path == "/__lbheartbeat__":
 		w.WriteHeader(http.StatusOK)
 		return
-	case "/__version__":
+	case r.URL.Path ==  "/__version__":
 		h.handleVersion(w, r)
 		return
-	case "/violations":
+	case strings.HasPrefix(r.URL.Path, "/violations/"):
 		switch r.Method {
 		case "PUT":
 			h.UpsertReputationByViolation(w, r)
