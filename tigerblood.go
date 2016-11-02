@@ -74,6 +74,9 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path ==  "/__version__":
 		h.handleVersion(w, r)
 		return
+	case r.URL.Path ==  "/__spec__":
+		h.handleSpec(w, r)
+		return
 	case strings.HasPrefix(r.URL.Path, "/violations/"):
 		switch r.Method {
 		case "PUT":
@@ -121,6 +124,28 @@ func (h *TigerbloodHandler) handleVersion(w http.ResponseWriter, req *http.Reque
 	}
 	w.Header().Set("Content-Type", "application/json")
 	http.ServeContent(w, req, "__version__", stat.ModTime(), f)
+}
+
+func (h *TigerbloodHandler) handleSpec(w http.ResponseWriter, req *http.Request) {
+	dir, err := os.Getwd()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not get CWD")
+		return
+	}
+	filename := path.Clean(dir + string(os.PathSeparator) + "swagger.json")
+	f, err := os.Open(filename)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	http.ServeContent(w, req, "__spec__", stat.ModTime(), f)
 }
 
 // CreateReputation takes a JSON formatted IP reputation entry from the http request and inserts it to the database.
