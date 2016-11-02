@@ -1,0 +1,190 @@
+swagger: "2.0"
+info:
+  title: Tigerblood
+  description: IP Reputation Service API
+  version: "1.0.0"
+  license:
+    name: MPL-2.0
+    url: http://mozilla.org/MPL/2.0/
+basePath: /
+schemes:
+- http
+- https
+produces:
+- application/json
+consumes:
+- application/json
+definitions:
+  version:
+    type: object
+    required:
+      - commit
+      - version
+      - source
+      - build
+    properties:
+      commit:
+        type: string
+        description: commit of the service running
+      version:
+        type: string
+        description: tag of the service running
+      source:
+        type: string
+        description: project username and repo
+      build:
+        type: string
+        description: circle build URL
+  reputation:
+    type: object
+    required:
+      - ip
+      - reputation
+    properties:
+      ip:
+        type: string
+        description: the network IP or CIDR
+      reputation:
+        type: integer
+        format: int32
+        description: how trustworthy the network is from 0 to 100 inclusive with 100 being more trustworthy
+paths:
+  /__heartbeat__:
+    get:
+      tags:
+        - heartbeat
+      responses:
+        200:
+          description: service is running
+  /__lbheartbeat__:
+    get:
+      tags:
+        - lbheartbeat
+      responses:
+        200:
+          description: service is running LB response
+  /__version__:
+    get:
+      tags:
+        - version
+      responses:
+        200:
+          description: get the service version
+          schema:
+            $ref: "#/definitions/version"
+        404:
+          description: version.json file not found
+          schema:
+            type: string
+        500:
+          description: error fetching version
+  /:
+    post:
+      tags:
+        - reputation
+      parameters:
+      - name: reputationAndIPBody
+        description: object with ip and reputation
+        in: body
+        schema:
+          $ref: "#/definitions/reputation"
+      responses:
+        201:
+          description: saved reputation for that IP
+        400:
+          description: error reading request body or invalid reputation
+        405:
+          description: reputation is already set for that IP
+        500:
+          description: error saving IP reputation
+  /{ip}:
+    get:
+      tags:
+        - reputation
+      summary: get IP reputation
+      parameters:
+      - name: ip
+        in: path
+        description: IP of reputation to return
+        required: true
+        type: string
+      responses:
+        200:
+          description: read reputation for that IP
+        400:
+          description: invalid IP in URL
+        404:
+          description: reputation for that IP not found
+        500:
+          description: error reading reputation
+    put:
+      tags:
+        - reputation
+      summary: update reputation for saved IP
+      parameters:
+      - name: ip
+        in: path
+        description: IP of reputation to update
+        required: true
+        type: string
+      - name: reputation
+        description: reputation to set IP to
+        in: body
+        schema:
+          type: object
+          required:
+            - reputation
+          properties:
+            reputation:
+              type: integer
+              format: int32
+      responses:
+        200:
+          description: deleted reputation for IP
+        400:
+          description: "invalid IP in URL, error reading request body, or invalid reputation (not in [0,100])"
+        404:
+          description: no reputation saved for that IP to update
+        500:
+          description: error updating reputation entry
+    delete:
+      tags:
+        - reputation
+      summary: delete reputation for saved IP
+      parameters:
+      - name: ip
+        in: path
+        description: IP of reputation to update
+        required: true
+        type: string
+      responses:
+        200:
+          description: deleted reputation for IP
+        400:
+          description: invalid IP in URL
+        500:
+          description: error deleting reputation entry
+  /violations/{ip}:
+    put:
+      tags:
+        - violation
+      summary: upsert reputation for an IP by violation
+      parameters:
+      - name: ip
+        in: path
+        description: IP of reputation to update
+        required: true
+        type: string
+      - name: violation
+        in: body
+        description: violation type to report
+        required: true
+        schema:
+          type: string
+      responses:
+        204:
+          description: upserted reputation for IP
+        400:
+          description: invalid IP in URL or SQL check violation
+        500:
+          description: error upserting reputation with violation
