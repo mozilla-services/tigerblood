@@ -242,7 +242,7 @@ func (h *TigerbloodHandler) DeleteReputation(w http.ResponseWriter, r *http.Requ
 	err = h.db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not update reputation entry: %s", err)
+		log.Printf("Could not delete reputation entry: %s", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
