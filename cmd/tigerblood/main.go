@@ -62,6 +62,8 @@ func main() {
 		credentials := viper.GetStringMapString("CREDENTIALS")
 		if len(credentials) == 0 {
 			log.Fatal("Hawk was enabled, but no credentials were found.")
+		} else {
+			log.Printf("Hawk enabled with %d credentials.", len(credentials))
 		}
 		handler = tigerblood.NewHawkHandler(handler, credentials)
 	}
