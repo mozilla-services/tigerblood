@@ -18,7 +18,10 @@ import (
 func printConfig() {
 	log.Println("Loaded viper config:")
 	for key, value := range viper.AllSettings() {
-		if key != "credentials" {
+		switch key {
+		case "credentials":  // skip sensitive keys
+		case "dsn":
+		default:
 			log.Print("\t", key, ": ", value)
 		}
 	}
