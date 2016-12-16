@@ -10,6 +10,17 @@ import (
 	"net/http"
 )
 
+
+
+func printConfig() {
+	log.Println("Loaded viper config:")
+	for key, value := range viper.AllSettings() {
+		if key != "credentials" {
+			log.Print("\t", key, ": ", value)
+		}
+	}
+}
+
 func main() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
@@ -29,6 +40,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading config file: %s", err)
 	}
+
+	printConfig()
 
 	// Set flags for go-runtime-metrics
 	flag.Set("statsd", viper.GetString("STATSD_ADDR"))
