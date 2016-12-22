@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
+	"time"
 )
 
 type CheckViolationError struct {
@@ -45,6 +46,20 @@ type ViolationReputationWeightEntry struct {
 	ReputationPenalty uint
 }
 
+func checkConnection(db *DB) {
+	for {
+		var one uint
+		err := db.QueryRow("SELECT 1").Scan(&one)
+		if err != nil {
+			log.Fatal("Database connection failed:", err)
+		}
+		if one != 1 {
+			log.Fatal("Apparently the database doesn't know the meaning of one anymore. Crashing.")
+		}
+		time.Sleep(10 * time.Second)
+	}
+}
+
 // NewDB creates a new DB instance from a DSN.
 func NewDB(dsn string) (*DB, error) {
 	db, err := sql.Open("postgres", dsn)
@@ -74,6 +89,9 @@ func NewDB(dsn string) (*DB, error) {
 		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
 	}
 	newDB.violationReputationWeightSelectStmt = violationReputationWeightSelectStmt
+
+	// DB watchdog, crashes the process if connection dies
+	go checkConnection(newDB)
 
 	return newDB, nil
 }
