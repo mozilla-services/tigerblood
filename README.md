@@ -54,6 +54,9 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
     "HAWK": "yes",
     "CREDENTIALS": {
         "root": "toor"
+    },
+    "VIOLATION_PENALTIES": {
+        "rate-limit-exceeded": "2"
     }
 }
 ```
@@ -165,9 +168,8 @@ Example: `curl http://tigerblood/__version__`
 #### PUT /violations/{ip}
 
 Sets or updates the reputation for an IP address or network to the
-reputation for the violation type found in the
-`violation_reputation_weights` table if it is lower than the current
-reputation.
+reputation for the violation type found in the config if it is lower
+than the current reputation.
 
 
 * Request parameters: None
