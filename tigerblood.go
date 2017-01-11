@@ -291,8 +291,11 @@ func (h *TigerbloodHandler) UpsertReputationByViolation(w http.ResponseWriter, r
 	var penalty, ok = h.violationPenalties[entry.Violation]
 	if !ok {
 		log.Printf("Could not find violation type: %s", entry.Violation)
-		penalty = 0
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Violation type not found."))
+		return
 	}
+
 	err = h.db.InsertOrUpdateReputationPenalty(nil, ip, uint(penalty))
 	if _, ok := err.(CheckViolationError); ok {
 		w.WriteHeader(http.StatusBadRequest)

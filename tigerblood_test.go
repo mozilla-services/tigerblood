@@ -204,10 +204,10 @@ func TestInsertReputationByViolation(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, uint(10), entry.Reputation)
 
-	// unknown violation type has no effect
+	// unknown violation type returns 400
 	recorder = httptest.ResponseRecorder{}
 	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 
 	entry, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
