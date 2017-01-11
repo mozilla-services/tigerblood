@@ -15,3 +15,6 @@ setup-db:
 
 rm-db:
 	docker rm -f postgres-ip4r
+
+test:
+	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
