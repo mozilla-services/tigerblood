@@ -42,6 +42,7 @@ The following configuration options are available:
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
+| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive.          | -                 |
 
 For environment variables, the configuration options must be prefixed with "TIGERBLOOD\_", for example, the environment variable to configure the DSN is TIGERBLOOD\_DSN.
 
