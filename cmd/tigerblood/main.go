@@ -45,6 +45,16 @@ func startRuntimeCollector() {
 	c.Run()
 }
 
+func stringStringMapToStringUint(ss map[string]string) map[string]uint {
+	su := make(map[string]uint)
+	for key, value := range ss {
+		if s, err := strconv.ParseUint(value, 10, 64); err == nil {
+			su[key] = uint(s)
+		}
+	}
+	return su
+}
+
 func main() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
@@ -88,7 +98,11 @@ func main() {
 		log.Println("statsd not found")
 	}
 
-	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient)
+	var handler http.Handler = tigerblood.NewTigerbloodHandler(
+		db,
+		statsdClient,
+		stringStringMapToStringUint(viper.GetStringMapString("VIOLATION_PENALTIES")))
+
 	if viper.GetBool("HAWK") {
 		credentials := viper.GetStringMapString("CREDENTIALS")
 		if len(credentials) == 0 {
@@ -98,6 +112,7 @@ func main() {
 		}
 		handler = tigerblood.NewHawkHandler(handler, credentials)
 	}
+
 	http.HandleFunc("/", handler.ServeHTTP)
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err = http.ListenAndServe(viper.GetString("BIND_ADDR"), nil)

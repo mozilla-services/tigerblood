@@ -16,14 +16,16 @@ import (
 )
 
 type TigerbloodHandler struct {
-	db     *DB
-	statsd *statsd.Client
+	db			 *DB
+	statsd			 *statsd.Client
+	violationPenalties	 map[string]uint
 }
 
-func NewTigerbloodHandler(db *DB, statsd *statsd.Client) *TigerbloodHandler {
+func NewTigerbloodHandler(db *DB, statsd *statsd.Client, violationPenalties map[string]uint) *TigerbloodHandler {
 	return &TigerbloodHandler{
 		db:     db,
 		statsd: statsd,
+		violationPenalties: violationPenalties,
 	}
 }
 
@@ -285,7 +287,13 @@ func (h *TigerbloodHandler) UpsertReputationByViolation(w http.ResponseWriter, r
 		return
 	}
 
-	err = h.db.InsertOrUpdateReputationEntryByViolationType(nil, ip, entry.Violation)
+	// lookup violation weight in config map
+	var penalty, ok = h.violationPenalties[entry.Violation]
+	if !ok {
+		log.Printf("Could not find violation type: %s", entry.Violation)
+		penalty = 0
+	}
+	err = h.db.InsertOrUpdateReputationPenalty(nil, ip, uint(penalty))
 	if _, ok := err.(CheckViolationError); ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Reputation is outside of valid range [0-100]"))
