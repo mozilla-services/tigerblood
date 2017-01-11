@@ -45,16 +45,6 @@ func startRuntimeCollector() {
 	c.Run()
 }
 
-func stringStringMapToStringUint(ss map[string]string) map[string]uint {
-	su := make(map[string]uint)
-	for key, value := range ss {
-		if s, err := strconv.ParseUint(value, 10, 64); err == nil {
-			su[key] = uint(s)
-		}
-	}
-	return su
-}
-
 func main() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
@@ -98,10 +88,20 @@ func main() {
 		log.Println("statsd not found")
 	}
 
-	var handler http.Handler = tigerblood.NewTigerbloodHandler(
-		db,
-		statsdClient,
-		stringStringMapToStringUint(viper.GetStringMapString("VIOLATION_PENALTIES")))
+	if !viper.IsSet("VIOLATION_PENALTIES") {
+		log.Fatal("No violation penalties found.")
+	}
+
+	var penalties = make(map[string]uint)
+	for k, penalty := range viper.GetStringMap("VIOLATION_PENALTIES") {
+		penalty, err := penalty.(uint)
+		if err {
+			log.Printf("Error loading violation weight %s: %s", penalty, err)
+		} else {
+			penalties[k] = uint(penalty)
+		}
+	}
+	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient, penalties)
 
 	if viper.GetBool("HAWK") {
 		credentials := viper.GetStringMapString("CREDENTIALS")

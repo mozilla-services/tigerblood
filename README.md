@@ -63,7 +63,7 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
         "root": "toor"
     },
     "VIOLATION_PENALTIES": {
-        "rate-limit-exceeded": "2"
+        "rate-limit-exceeded": 2
     }
 }
 ```
