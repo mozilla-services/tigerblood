@@ -39,9 +39,16 @@ The following configuration options are available:
 | CREDENTIALS                | A map of hawk id-keys.                                                                   | -                 |
 | DATABASE\_MAX\_OPEN\_CONNS | The maximum amount of PostgreSQL database connections tigerblood will open               | 80                |
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
-| STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
+| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive.          | -                 |
+| STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
+| STATSD\_NAMESPACE          | The statsd namespace prefix                                                              | tigerblood.       |
+| PUBLISH\_RUNTIME\_STATS    | true to enable sending go runtime stats to STATSD\_ADDR                                  | false             |
+| RUNTIME\_PAUSE\_INTERVAL   | How often to send go runtime stats in seconds                                            | 10                |
+| RUNTIME\_CPU               | Send `cpu.goroutines` and `cpu.cgo_calls` when runtime stats are enabled.                | true              |
+| RUNTIME\_MEM               | Send top level `mem`, `mem.heap`, and `mem.stack` stats when runtime stats are enabled.  | true              |
+| RUNTIME\_GC                | Send `mem.gc` stats when runtime stats are enabled.                                      | true              |
 
 For environment variables, the configuration options must be prefixed with "TIGERBLOOD\_", for example, the environment variable to configure the DSN is TIGERBLOOD\_DSN.
 
@@ -54,6 +61,9 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
     "HAWK": "yes",
     "CREDENTIALS": {
         "root": "toor"
+    },
+    "VIOLATION_PENALTIES": {
+        "rate-limit-exceeded": 2
     }
 }
 ```
@@ -165,9 +175,8 @@ Example: `curl http://tigerblood/__version__`
 #### PUT /violations/{ip}
 
 Sets or updates the reputation for an IP address or network to the
-reputation for the violation type found in the
-`violation_reputation_weights` table if it is lower than the current
-reputation.
+reputation for the violation type found in the config if it is lower
+than the current reputation.
 
 
 * Request parameters: None

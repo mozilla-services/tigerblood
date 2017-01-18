@@ -33,17 +33,11 @@ var ErrNoRowsAffected = fmt.Errorf("No rows affected")
 type DB struct {
 	*sql.DB
 	reputationSelectStmt *sql.Stmt
-	violationReputationWeightSelectStmt *sql.Stmt
 }
 
 type ReputationEntry struct {
 	IP         string
 	Reputation uint
-}
-
-type ViolationReputationWeightEntry struct {
-	ViolationType string
-	ReputationPenalty uint
 }
 
 func checkConnection(db *DB) {
@@ -83,12 +77,6 @@ func NewDB(dsn string) (*DB, error) {
 		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
 	}
 	newDB.reputationSelectStmt = reputationSelectStmt
-
-	violationReputationWeightSelectStmt, err := db.Prepare("SELECT violation_type, reputation FROM violation_reputation_weights WHERE violation_type = $1 LIMIT 1;")
-	if err != nil {
-		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
-	}
-	newDB.violationReputationWeightSelectStmt = violationReputationWeightSelectStmt
 
 	// DB watchdog, crashes the process if connection dies
 	go checkConnection(newDB)
@@ -249,21 +237,6 @@ func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	return entry, err
 }
 
-// inserts a single ViolationReputationWeightEntry into the database
-func (db DB) InsertViolationReputationWeightEntry(tx *sql.Tx, entry ViolationReputationWeightEntry) error {
-	exec := db.Exec
-	if tx != nil {
-		exec = tx.Exec
-	}
-	_, err := exec("INSERT INTO violation_reputation_weights (violation_type, reputation) VALUES ($1, $2);", entry.ViolationType, entry.ReputationPenalty)
-	if pqErr, ok := err.(*pq.Error); ok {
-		if pqErr.Code == pgCheckViolationErrorCode {
-			return CheckViolationError{pqErr}
-		}
-	}
-	return err
-}
-
 // DeleteReputationEntry deletes an entry from the database based on the entry's IP address
 func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	exec := db.Exec
@@ -271,29 +244,5 @@ func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 		exec = tx.Exec
 	}
 	_, err := exec("DELETE FROM reputation WHERE ip = $1;", entry.IP)
-	return err
-}
-
-// unknown violations have no effect on reputation
-const unknownViolationPenalty = 0
-
-// Find the reputation to set an IP's reputation to for the given violation type
-func (db DB) SelectViolationReputationWeightEntry(violationType string) (ViolationReputationWeightEntry, error) {
-	var entry ViolationReputationWeightEntry
-	err := db.violationReputationWeightSelectStmt.QueryRow(violationType).Scan(&entry.ViolationType, &entry.ReputationPenalty)
-	if err == sql.ErrNoRows {
-		log.Printf("Could not find reputation to set for violation type: %s", violationType)
-		entry = ViolationReputationWeightEntry{ViolationType: "Unknown", ReputationPenalty: unknownViolationPenalty}
-	}
-	return entry, err
-}
-
-// Insert or update the IP's reputation after subtracting a penalty for the violation type
-func (db DB) InsertOrUpdateReputationEntryByViolationType(tx *sql.Tx, ip string, violation_type string) error {
-	violation_entry, err := db.SelectViolationReputationWeightEntry(violation_type)
-	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("Error finding reputation for violation type: %s", err)
-	}
-	err = db.InsertOrUpdateReputationPenalty(nil, ip, violation_entry.ReputationPenalty)
 	return err
 }

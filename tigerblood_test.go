@@ -71,7 +71,7 @@ func TestReadReputationInvalidIP(t *testing.T) {
 	assert.Nil(t, err)
 	err = db.CreateTables()
 	assert.Nil(t, err)
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.ReadReputation(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 }
@@ -87,7 +87,7 @@ func TestReadReputationValidIP(t *testing.T) {
 		Reputation: 50,
 	})
 	assert.Nil(t, err)
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.ReadReputation(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil))
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
@@ -105,7 +105,7 @@ func TestReadReputationNoEntry(t *testing.T) {
 		Reputation: 50,
 	})
 	assert.Nil(t, err)
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.ReadReputation(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.Nil(t, err)
@@ -118,7 +118,7 @@ func TestCreateEntry(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusCreated, recorder.Code)
 	assert.Nil(t, err)
@@ -138,7 +138,7 @@ func TestCreateEntryInvalidReputation(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 200}`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
@@ -151,7 +151,7 @@ func TestUpdateEntry(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.UpdateReputation(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
@@ -171,7 +171,7 @@ func TestDeleteEntry(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 	db.emptyReputationTable()
-	h := NewTigerbloodHandler(db, nil)
+	h := NewTigerbloodHandler(db, nil, nil)
 	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	recorder = httptest.ResponseRecorder{}
 	h.DeleteReputation(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil))
@@ -188,9 +188,14 @@ func TestInsertReputationByViolation(t *testing.T) {
 	assert.Nil(t, err)
 	err = db.EmptyTables()
 	assert.Nil(t, err)
-	assert.Nil(t, testDB.InsertViolationReputationWeightEntry(nil, ViolationReputationWeightEntry{ViolationType: "TestViolation", ReputationPenalty: 90}))
 
-	h := NewTigerbloodHandler(db, nil)
+	testViolations := map[string]uint{
+		"TestViolation": 90,
+	}
+
+	h := NewTigerbloodHandler(db, nil, testViolations)
+
+	// known violation type is subtracted from default reputation
 	recorder := httptest.ResponseRecorder{}
 	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "TestViolation"}`)))
 	assert.Equal(t, http.StatusNoContent, recorder.Code)
@@ -199,10 +204,10 @@ func TestInsertReputationByViolation(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, uint(10), entry.Reputation)
 
-	// update with unknown type
+	// unknown violation type returns 400
 	recorder = httptest.ResponseRecorder{}
 	h.UpsertReputationByViolation(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 
 	entry, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)

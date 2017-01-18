@@ -88,7 +88,21 @@ func main() {
 		log.Println("statsd not found")
 	}
 
-	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient)
+	if !viper.IsSet("VIOLATION_PENALTIES") {
+		log.Fatal("No violation penalties found.")
+	}
+
+	var penalties = make(map[string]uint)
+	for k, penalty := range viper.GetStringMap("VIOLATION_PENALTIES") {
+		penalty, err := penalty.(uint)
+		if err {
+			log.Printf("Error loading violation weight %s: %s", penalty, err)
+		} else {
+			penalties[k] = uint(penalty)
+		}
+	}
+	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient, penalties)
+
 	if viper.GetBool("HAWK") {
 		credentials := viper.GetStringMapString("CREDENTIALS")
 		if len(credentials) == 0 {
@@ -98,6 +112,7 @@ func main() {
 		}
 		handler = tigerblood.NewHawkHandler(handler, credentials)
 	}
+
 	http.HandleFunc("/", handler.ServeHTTP)
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err = http.ListenAndServe(viper.GetString("BIND_ADDR"), nil)

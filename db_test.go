@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"testing"
-	"database/sql"
 )
 
 var testDB *DB
@@ -140,98 +139,30 @@ func TestDelete(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestSelectReputationForViolationType(t *testing.T) {
+func TestInsertOrUpdateReputationPenalty(t *testing.T) {
 	assert.Nil(t, testDB.CreateTables())
 	assert.Nil(t, testDB.EmptyTables())
-	assert.Nil(t, testDB.InsertViolationReputationWeightEntry(nil, ViolationReputationWeightEntry{ViolationType: "TestViolation", ReputationPenalty: 10}))
 
-	entry, err := testDB.SelectViolationReputationWeightEntry("TestViolation")
-	assert.Nil(t, err)
-	assert.Equal(t, entry.ReputationPenalty, uint(10))
-
-	entry, err = testDB.SelectViolationReputationWeightEntry("UnknownViolation")
-	assert.Equal(t, err, sql.ErrNoRows)
-	assert.Equal(t, entry.ReputationPenalty, uint(0))
-
-	assert.Nil(t, testDB.EmptyTables())
-}
-
-func InsertOrUpdateReputationEntryByViolationType(t *testing.T) {
-	assert.Nil(t, testDB.CreateTables())
-	assert.Nil(t, testDB.EmptyTables())
-	assert.Nil(t, testDB.InsertViolationReputationWeightEntry(nil, ViolationReputationWeightEntry{ViolationType: "TestViolation", ReputationPenalty: 90}))
-
-	// test insert for known violation
-	err := testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.0.1", "TestViolation")
+	// test insert
+	err := testDB.InsertOrUpdateReputationPenalty(nil, "192.168.0.1", 90)
 	assert.Nil(t, err)
 
 	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(10), entry.Reputation)
 
-	// test update for known violation
-	assert.Nil(t, testDB.InsertViolationReputationWeightEntry(nil, ViolationReputationWeightEntry{ViolationType: "BigTestViolation", ReputationPenalty: 99}))
-	err = testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.0.1", "BigTestViolation")
+	// test update
+	err = testDB.InsertOrUpdateReputationPenalty(nil, "192.168.0.1", 9)
 	assert.Nil(t, err)
 
 	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(1), entry.Reputation)
 
-	// test insert for unknown violation
-	err = testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.1.1", "SpookyViolation")
+	// test reputation doesn't go negative
+	err = testDB.InsertOrUpdateReputationPenalty(nil, "192.168.0.1", 90)
 	assert.Nil(t, err)
 
-	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.1.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(100), entry.Reputation)
-
-	// test update for unknown violation
-	err = testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.1.1", "SpookyViolation")
-	assert.Nil(t, err)
-
-	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.1.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(100), entry.Reputation)
-
-	// test update for unknown violation uses min reputation
-	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(1), entry.Reputation)
-
-	// 1 < 100 so leave the lower/worse reputation
-	err = testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.0.1", "SpookyViolation")
-	assert.Nil(t, err)
-
-	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(1), entry.Reputation)
-
-	assert.Nil(t, testDB.EmptyTables())
-}
-
-func InsertOrUpdateReputationEntryByViolationTypeAppliesPenaltyForRepeatedViolations(t *testing.T) {
-	assert.Nil(t, testDB.CreateTables())
-	assert.Nil(t, testDB.EmptyTables())
-	assert.Nil(t, testDB.InsertViolationReputationWeightEntry(nil, ViolationReputationWeightEntry{ViolationType: "TestViolation", ReputationPenalty: 25}))
-
-	// test insert for known violation
-	err := testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.0.1", "TestViolation")
-	assert.Nil(t, err)
-
-	err = testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.0.1", "TestViolation")
-	assert.Nil(t, err)
-
-	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(100 - 25 * 2), entry.Reputation)
-
-	for i := 0; i < 3; i++ {
-		err = testDB.InsertOrUpdateReputationEntryByViolationType(nil, "192.168.0.1", "TestViolation")
-		assert.Nil(t, err)
-	}
-
-	// Saturates at 0 reputation
 	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(0), entry.Reputation)
