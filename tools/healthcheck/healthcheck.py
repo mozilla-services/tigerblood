@@ -3,15 +3,15 @@ import requests
 import json
 
 
-def healthcheck(event, context):
+def healthcheck(ip=None, url=None):
     with open('config.json') as config_file:
         config = json.load(config_file)
     hawk_auth = HawkAuth(
         id=config['hawk_id'],
         key=config['hawk_key'])
 
-    ip = config['ip']
-    url = config['url']
+    ip = ip or config['ip']
+    url = url or config['url']
 
     get = requests.get(url + ip, auth=hawk_auth)
     if get.status_code != 404:
