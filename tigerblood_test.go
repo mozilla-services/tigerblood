@@ -49,6 +49,16 @@ var cases = []struct {
 		"2001:db8::ff00:42:8329/128",
 		false,
 	},
+	{
+		"/127.0.0.1' or '1' = '1",
+		"",
+		true,
+	},
+	{
+		"/127.0.0.1; -- SELECT(2)",
+		"",
+		true,
+	},
 }
 
 func TestIPAddressFromHTTPPath(t *testing.T) {
