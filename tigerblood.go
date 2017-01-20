@@ -140,6 +140,14 @@ func (h *TigerbloodHandler) CreateReputation(w http.ResponseWriter, r *http.Requ
 		log.Printf("Could not unmarshal request body: %s", err)
 		return
 	}
+
+	ip := net.ParseIP(entry.IP)
+	if ip == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Error getting IP from HTTP body: %s", body)
+		return
+	}
+
 	err = h.db.InsertReputationEntry(nil, entry)
 	if _, ok := err.(CheckViolationError); ok {
 		w.WriteHeader(http.StatusBadRequest)

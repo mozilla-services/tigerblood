@@ -141,6 +141,19 @@ func TestCreateEntry(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, recorder.Code)
 }
 
+func TestCreateEntryInvalidIP(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+	h := NewTigerbloodHandler(db, nil, nil)
+	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1 -- SELECT(2)", "reputation": 200}`)))
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Nil(t, err)
+}
+
 func TestCreateEntryInvalidReputation(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
 	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
