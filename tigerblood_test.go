@@ -49,6 +49,16 @@ var cases = []struct {
 		"2001:db8::ff00:42:8329/128",
 		false,
 	},
+	{
+		"/127.0.0.1' or '1' = '1",
+		"",
+		true,
+	},
+	{
+		"/127.0.0.1; -- SELECT(2)",
+		"",
+		true,
+	},
 }
 
 func TestIPAddressFromHTTPPath(t *testing.T) {
@@ -129,6 +139,19 @@ func TestCreateEntry(t *testing.T) {
 	recorder = httptest.ResponseRecorder{}
 	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusConflict, recorder.Code)
+}
+
+func TestCreateEntryInvalidIP(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+	h := NewTigerbloodHandler(db, nil, nil)
+	h.CreateReputation(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1 -- SELECT(2)", "reputation": 200}`)))
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Nil(t, err)
 }
 
 func TestCreateEntryInvalidReputation(t *testing.T) {
