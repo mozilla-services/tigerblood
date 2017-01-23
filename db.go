@@ -96,18 +96,6 @@ const emptyReputationTableSQL = `
 TRUNCATE TABLE reputation;
 `
 
-const createViolationReputationWeightsTableSQL = `
-CREATE TABLE IF NOT EXISTS violation_reputation_weights (
-violation_type varchar(128) PRIMARY KEY NOT NULL,
-reputation int NOT NULL CHECK (reputation >= 0 AND reputation <= 100),
-UNIQUE (violation_type, reputation)
-);
-`
-
-const emptyViolationReputationWeightsTableSQL = `
-TRUNCATE TABLE violation_reputation_weights;
-`
-
 // Close closes the database
 func (db DB) Close() error {
 	err := db.reputationSelectStmt.Close()
@@ -123,10 +111,6 @@ func (db DB) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Could not create reputation table: %s", err)
 	}
-	err = db.createViolationReputationWeightsTable()
-	if err != nil {
-		return fmt.Errorf("Could not create violation reputation weights table: %s", err)
-	}
 	return nil
 }
 
@@ -135,10 +119,6 @@ func (db DB) EmptyTables() error {
 	err := db.emptyReputationTable()
 	if err != nil {
 		return fmt.Errorf("Could not truncate reputation table: %s", err)
-	}
-	err = db.emptyViolationReputationWeightsTable()
-	if err != nil {
-		return fmt.Errorf("Could not truncate violation reputation weights table: %s", err)
 	}
 	return nil
 }
@@ -151,16 +131,6 @@ func (db DB) createReputationTable() error {
 
 func (db DB) emptyReputationTable() error {
 	_, err := db.Query(emptyReputationTableSQL)
-	return err
-}
-
-func (db DB) createViolationReputationWeightsTable() error {
-	_, err := db.Query(createViolationReputationWeightsTableSQL)
-	return err
-}
-
-func (db DB) emptyViolationReputationWeightsTable() error {
-	_, err := db.Query(emptyViolationReputationWeightsTableSQL)
 	return err
 }
 
