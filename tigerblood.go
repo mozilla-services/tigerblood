@@ -141,10 +141,9 @@ func (h *TigerbloodHandler) CreateReputation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ip := net.ParseIP(entry.IP)
-	if ip == nil {
+	if net.ParseIP(entry.IP) == nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Error getting IP from HTTP body: %s", body)
+		log.Printf("Error parsing invalid IP from HTTP body: %s", body)
 		return
 	}
 
