@@ -1,17 +1,15 @@
+import os
 from requests_hawk import HawkAuth
 import requests
-import json
 
 
-def healthcheck(event, context):
-    with open('config.json') as config_file:
-        config = json.load(config_file)
-    hawk_auth = HawkAuth(
-        id=config['hawk_id'],
-        key=config['hawk_key'])
+def healthcheck(ip=None, url=None, hawk_id=None, hawk_key=None):
+    "The function inserts an IP, updates it and deletes it, ensuring each operation was successful by looking up said IP afterwards."
+    hawk_auth = HawkAuth(id=hawk_id or os.environ['HAWK_ID'],
+                         key=hawk_key or os.environ['HAWK_KEY'])
 
-    ip = config['ip']
-    url = config['url']
+    ip = ip or os.environ['TEST_IP']
+    url = url or os.environ['SERVICE_URL']
 
     get = requests.get(url + ip, auth=hawk_auth)
     if get.status_code != 404:
@@ -32,3 +30,8 @@ def healthcheck(event, context):
     assert delete.status_code == 200
     get = requests.get(url + ip, auth=hawk_auth)
     assert get.status_code == 404
+
+
+def handler(event, context):
+    "Entrypoint for AWS Lambda function."
+    healthcheck()
