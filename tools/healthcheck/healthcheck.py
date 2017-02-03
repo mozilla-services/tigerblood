@@ -35,3 +35,7 @@ def healthcheck(ip=None, url=None, hawk_id=None, hawk_key=None):
 def handler(event, context):
     "Entrypoint for AWS Lambda function."
     healthcheck()
+
+
+if __name__ == '__main__':
+    healthcheck()
