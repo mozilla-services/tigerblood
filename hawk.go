@@ -86,6 +86,7 @@ func (h *HawkHandler) lookupNonce(nonce string, t time.Time, credentials *hawk.C
 	h.bloomLock.Unlock()
 	key := nonce + t.String() + credentials.ID
 	if h.bloomNow.TestString(key) || h.bloomPrev.TestString(key) {
+		log.Printf("Could not find nonce w/ key %s in bloom filters", key)
 		return false
 	}
 	h.bloomNow.AddString(key)
@@ -99,6 +100,7 @@ func (h *HawkHandler) lookupCredentials(creds *hawk.Credentials) error {
 		creds.Key = cred
 		return nil
 	}
+	log.Printf("Could not find creds w/ id %s.", creds.ID)
 	return &hawk.CredentialError{
 		Type:        hawk.UnknownID,
 		Credentials: creds,
