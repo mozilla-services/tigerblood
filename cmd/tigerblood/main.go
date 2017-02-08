@@ -93,14 +93,15 @@ func main() {
 	}
 
 	var penalties = make(map[string]uint)
-	for k, penalty := range viper.GetStringMap("VIOLATION_PENALTIES") {
-		penalty, err := penalty.(uint)
-		if err {
+	for k, penalty := range viper.GetStringMapString("VIOLATION_PENALTIES") {
+		penalty, err := strconv.ParseUint(penalty, 10, 64)
+		if err != nil {
 			log.Printf("Error loading violation weight %s: %s", penalty, err)
 		} else {
 			penalties[k] = uint(penalty)
 		}
 	}
+	log.Printf("loaded violation map: %s", penalties)
 	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient, penalties)
 
 	if viper.GetBool("HAWK") {
