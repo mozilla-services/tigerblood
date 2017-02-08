@@ -31,6 +31,9 @@ def healthcheck(ip=None, url=None, hawk_id=None, hawk_key=None):
     get = requests.get(url + ip, auth=hawk_auth)
     assert get.status_code == 404
 
+    put = requests.put(url + 'violations/' + ip, json={'ip': ip, 'Violation': 'test_violation'}, auth=hawk_auth)
+    assert put.status_code == 204, "upsert test violation failed"
+
 
 def handler(event, context):
     "Entrypoint for AWS Lambda function."
