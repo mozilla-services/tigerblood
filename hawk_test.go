@@ -80,6 +80,25 @@ func TestValidPayload(t *testing.T) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
 
+func TestNoPayload(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", nil)
+	assert.Nil(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	auth := hawk.NewRequestAuth(req,
+		&hawk.Credentials{
+			ID:   "fxa",
+			Key:  "foobar",
+			Hash: sha256.New,
+		},
+		0,
+	)
+	req.Header.Set("Authorization", auth.RequestHeader())
+	recorder := httptest.NewRecorder()
+	handler := NewHawkHandler(EchoHandler, map[string]string{"fxa": "foobar"})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
 func TestExpiration(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
