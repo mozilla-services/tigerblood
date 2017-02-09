@@ -4,7 +4,7 @@ import (
 	"go.mozilla.org/hawk"
 	"net/http"
 	"time"
-
+	"log"
 	"bytes"
 	"crypto/sha256"
 	"github.com/willf/bloom"
@@ -46,17 +46,26 @@ func (h *HawkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		buf, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-		hash := auth.PayloadHash(r.Header.Get("Content-Type"))
-		io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
-		if !auth.ValidHash(hash) {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+		if r.Body != nil {
+			buf, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+			hash := auth.PayloadHash(r.Header.Get("Content-Type"))
+
+			bytesWritten, copyErr := io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
+			if copyErr != nil {
+				log.Printf("Error copying request body: %s ", copyErr)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if bytesWritten > 0 && !auth.ValidHash(hash) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 		}
 	}
 	// Authentication successful, continue
@@ -77,6 +86,7 @@ func (h *HawkHandler) lookupNonce(nonce string, t time.Time, credentials *hawk.C
 	h.bloomLock.Unlock()
 	key := nonce + t.String() + credentials.ID
 	if h.bloomNow.TestString(key) || h.bloomPrev.TestString(key) {
+		log.Printf("Could not find nonce w/ key %s in bloom filters", key)
 		return false
 	}
 	h.bloomNow.AddString(key)
@@ -90,6 +100,7 @@ func (h *HawkHandler) lookupCredentials(creds *hawk.Credentials) error {
 		creds.Key = cred
 		return nil
 	}
+	log.Printf("Could not find creds w/ id %s.", creds.ID)
 	return &hawk.CredentialError{
 		Type:        hawk.UnknownID,
 		Credentials: creds,
