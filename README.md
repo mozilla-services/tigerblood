@@ -172,6 +172,24 @@ Example: `curl http://tigerblood/__heartbeat__`
 
 Example: `curl http://tigerblood/__version__`
 
+#### GET /violations
+
+* Request parameters: None
+* Request body: a JSON object with the schema:
+
+Returns a hashmap of violation type to penalty loaded from the config e.g.
+
+```json
+{
+  "violationName": 20,
+  "testViolation": 0
+}
+```
+
+* Successful response status code: 200
+
+Example: `curl -X GET http://tigerblood/violations`
+
 #### PUT /violations/{ip}
 
 Sets or updates the reputation for an IP address or network to the

@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -202,6 +203,32 @@ func TestDeleteEntry(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.NotNil(t, err)
+}
+
+func TestListViolations(t *testing.T) {
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+
+	testViolations := map[string]uint{
+		"TestViolation": 90,
+		"TestViolation:2": 20,
+	}
+
+	h := NewTigerbloodHandler(db, nil, testViolations)
+	req := httptest.NewRequest("GET", "/violations", nil)
+	recorder := httptest.NewRecorder()
+	h.ServeHTTP(recorder, req)
+	res := recorder.Result()
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(res.Body)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "{\"TestViolation\":90,\"TestViolation:2\":20}", string(body))
 }
 
 func TestInsertReputationByViolation(t *testing.T) {

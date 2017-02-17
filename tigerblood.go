@@ -76,8 +76,10 @@ func (h *TigerbloodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path ==  "/__version__":
 		h.handleVersion(w, r)
 		return
-	case strings.HasPrefix(r.URL.Path, "/violations/"):
+	case strings.HasPrefix(r.URL.Path, "/violations"):
 		switch r.Method {
+		case "GET":
+			h.ListViolations(w, r)
 		case "PUT":
 			h.UpsertReputationByViolation(w, r)
 		default:
@@ -255,6 +257,19 @@ func (h *TigerbloodHandler) DeleteReputation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+
+func (h *TigerbloodHandler) ListViolations(w http.ResponseWriter, r *http.Request) {
+	json, err := json.Marshal(h.violationPenalties)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshaling violations to JSON: %s", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(json)
 }
 
 // UpsertReputationByViolation takes a JSON body from the http request
