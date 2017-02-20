@@ -12,6 +12,7 @@ import (
 	"time"
 	"strconv"
 	"net/http"
+	"strings"
 )
 
 
@@ -97,13 +98,22 @@ func main() {
 		log.Fatal("No violation penalties found.")
 	}
 
+	// pass as violation_type=penalty (e.g. rateLimited=20) to
+	// workaround for viper lowercasing everything
+	// https://github.com/spf13/viper/issues/260
 	var penalties = make(map[string]uint)
-	for k, penalty := range viper.GetStringMapString("VIOLATION_PENALTIES") {
-		penalty, err := strconv.ParseUint(penalty, 10, 64)
+	for _, kv := range strings.Split(viper.GetString("VIOLATION_PENALTIES"), ",") {
+		tmp := strings.Split(kv, "=")
+		if len(tmp) != 2 {
+			log.Printf("Error loading violation penalty %s (format should be type=penalty)", tmp)
+			continue
+		}
+		violationType, penalty := tmp[0], tmp[1]
+		parsedPenalty, err := strconv.ParseUint(penalty, 10, 64)
 		if err != nil {
-			log.Printf("Error loading violation weight %s: %s", penalty, err)
+			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
 		} else {
-			penalties[k] = uint(penalty)
+			penalties[violationType] = uint(parsedPenalty)
 		}
 	}
 	log.Printf("loaded violation map: %s", penalties)
