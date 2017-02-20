@@ -1,12 +1,13 @@
 package tigerblood
 
 import (
+	log "github.com/Sirupsen/logrus"
+	"go.mozilla.org/mozlogrus"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/DataDog/datadog-go/statsd"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -14,6 +15,11 @@ import (
 	"strings"
 	"time"
 )
+
+
+func init() {
+	mozlogrus.Enable("tigerblood")
+}
 
 type TigerbloodHandler struct {
 	db			 *DB

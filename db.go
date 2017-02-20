@@ -1,12 +1,17 @@
 package tigerblood
 
 import (
-	"log"
+	log "github.com/Sirupsen/logrus"
+	"go.mozilla.org/mozlogrus"
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
 	"time"
 )
+
+func init() {
+	mozlogrus.Enable("tigerblood")
+}
 
 type CheckViolationError struct {
 	Inner *pq.Error

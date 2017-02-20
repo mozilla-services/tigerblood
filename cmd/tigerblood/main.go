@@ -1,13 +1,14 @@
 package main
 
 import (
+	log "github.com/Sirupsen/logrus"
+	"go.mozilla.org/mozlogrus"
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/bmhatfield/go-runtime-metrics/collector"
 	"github.com/spf13/viper"
 	"go.mozilla.org/tigerblood"
 	"github.com/peterbourgon/g2s"
 	"fmt"
-	"log"
 	"time"
 	"strconv"
 	"net/http"
@@ -16,15 +17,17 @@ import (
 
 
 func printConfig() {
-	log.Println("Loaded viper config:")
+	var fields = log.Fields{}
 	for key, value := range viper.AllSettings() {
 		switch key {
 		case "credentials":  // skip sensitive keys
 		case "dsn":
 		default:
-			log.Print("\t", key, ": ", value)
+			fields[key] = value
 		}
 	}
+
+	log.WithFields(fields).Info("Loaded viper config:")
 }
 
 func startRuntimeCollector() {
@@ -46,6 +49,8 @@ func startRuntimeCollector() {
 }
 
 func main() {
+	mozlogrus.Enable("tigerblood")
+
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 80)
