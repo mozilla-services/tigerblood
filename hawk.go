@@ -4,7 +4,6 @@ import (
 	"go.mozilla.org/hawk"
 	"net/http"
 	"time"
-
 	"bytes"
 	"crypto/sha256"
 	"github.com/willf/bloom"

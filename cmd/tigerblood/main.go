@@ -1,30 +1,34 @@
 package main
 
 import (
+	log "github.com/Sirupsen/logrus"
+	"go.mozilla.org/mozlogrus"
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/bmhatfield/go-runtime-metrics/collector"
 	"github.com/spf13/viper"
 	"go.mozilla.org/tigerblood"
 	"github.com/peterbourgon/g2s"
 	"fmt"
-	"log"
 	"time"
 	"strconv"
 	"net/http"
+	"strings"
 )
 
 
 
 func printConfig() {
-	log.Println("Loaded viper config:")
+	var fields = log.Fields{}
 	for key, value := range viper.AllSettings() {
 		switch key {
 		case "credentials":  // skip sensitive keys
 		case "dsn":
 		default:
-			log.Print("\t", key, ": ", value)
+			fields[key] = value
 		}
 	}
+
+	log.WithFields(fields).Info("Loaded viper config:")
 }
 
 func startRuntimeCollector() {
@@ -46,6 +50,8 @@ func startRuntimeCollector() {
 }
 
 func main() {
+	mozlogrus.Enable("tigerblood")
+
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 80)
@@ -92,13 +98,22 @@ func main() {
 		log.Fatal("No violation penalties found.")
 	}
 
+	// pass as violation_type=penalty (e.g. rateLimited=20) to
+	// workaround for viper lowercasing everything
+	// https://github.com/spf13/viper/issues/260
 	var penalties = make(map[string]uint)
-	for k, penalty := range viper.GetStringMapString("VIOLATION_PENALTIES") {
-		penalty, err := strconv.ParseUint(penalty, 10, 64)
+	for _, kv := range strings.Split(viper.GetString("VIOLATION_PENALTIES"), ",") {
+		tmp := strings.Split(kv, "=")
+		if len(tmp) != 2 {
+			log.Printf("Error loading violation penalty %s (format should be type=penalty)", tmp)
+			continue
+		}
+		violationType, penalty := tmp[0], tmp[1]
+		parsedPenalty, err := strconv.ParseUint(penalty, 10, 64)
 		if err != nil {
-			log.Printf("Error loading violation weight %s: %s", penalty, err)
+			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
 		} else {
-			penalties[k] = uint(penalty)
+			penalties[violationType] = uint(parsedPenalty)
 		}
 	}
 	log.Printf("loaded violation map: %s", penalties)
