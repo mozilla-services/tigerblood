@@ -12,65 +12,75 @@ import (
 	"sync"
 )
 
-type HawkHandler struct {
-	handler     http.Handler
+type HawkData struct {
 	credentials map[string]string
 
 	bloomPrev     *bloom.BloomFilter
 	bloomNow      *bloom.BloomFilter
-	bloomHalflife time.Duration
 	lastRotate    time.Time
 	bloomLock     sync.Mutex
 }
 
-func NewHawkHandler(handler http.Handler, secrets map[string]string) *HawkHandler {
-	var requestsPerHalfLife uint = 2000 * 30
-	var bitsPerRequest uint = 50
-	return &HawkHandler{
-		handler:       handler,
+const (
+	bloomHalflife time.Duration = 30 * time.Second
+	requestsPerHalfLife uint = 2000 * 30
+	bitsPerRequest uint = 50
+)
+
+func NewHawkData(secrets map[string]string) *HawkData {
+	return &HawkData{
 		credentials:   secrets,
+
 		bloomPrev:     bloom.New(requestsPerHalfLife * bitsPerRequest, 5),
 		bloomNow:      bloom.New(requestsPerHalfLife * bitsPerRequest, 5),
-		bloomHalflife: 30 * time.Second,
 		lastRotate:    time.Now(),
 	}
 }
 
-func (h *HawkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/__lbheartbeat__" &&
-		r.URL.Path != "/__heartbeat__" &&
-		r.URL.Path != "/__version__" {
-		auth, err := hawk.NewAuthFromRequest(r, h.lookupCredentials, h.lookupNonce)
-		if err != nil || auth.Valid() != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		buf, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-		hash := auth.PayloadHash(r.Header.Get("Content-Type"))
-		io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
-		if !auth.ValidHash(hash) {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+func RequireHawkAuth(credentials map[string]string) Middleware {
+	m := NewHawkData(credentials)
+
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := UnauthedRoutes[r.URL.Path]; ok {
+				// Authentication not required, continue
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			auth, err := hawk.NewAuthFromRequest(r, m.lookupCredentials, m.lookupNonce)
+			if err != nil || auth.Valid() != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			buf, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+			hash := auth.PayloadHash(r.Header.Get("Content-Type"))
+			io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
+			if !auth.ValidHash(hash) {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			// Authentication successful, continue
+			h.ServeHTTP(w, r)
+		})
 	}
-	// Authentication successful, continue
-	h.handler.ServeHTTP(w, r)
 }
 
-func (h *HawkHandler) rotate() {
+func (h *HawkData) rotate() {
 	h.bloomNow, h.bloomPrev = h.bloomPrev, h.bloomNow
 	h.bloomNow.ClearAll()
 	h.lastRotate = time.Now()
 }
 
-func (h *HawkHandler) lookupNonce(nonce string, t time.Time, credentials *hawk.Credentials) bool {
+func (h *HawkData) lookupNonce(nonce string, t time.Time, credentials *hawk.Credentials) bool {
 	h.bloomLock.Lock()
-	if time.Now().Sub(h.lastRotate) > h.bloomHalflife {
+	if time.Now().Sub(h.lastRotate) > bloomHalflife {
 		h.rotate()
 	}
 	h.bloomLock.Unlock()
@@ -82,7 +92,7 @@ func (h *HawkHandler) lookupNonce(nonce string, t time.Time, credentials *hawk.C
 	return true
 }
 
-func (h *HawkHandler) lookupCredentials(creds *hawk.Credentials) error {
+func (h *HawkData) lookupCredentials(creds *hawk.Credentials) error {
 	creds.Key = "-"
 	creds.Hash = sha256.New
 	if cred, ok := h.credentials[creds.ID]; ok {
