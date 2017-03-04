@@ -123,7 +123,16 @@ func loadViolationPenalties() map[string]uint {
 		if err != nil {
 			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
 		} else {
-			penalties[violationType] = uint(parsedPenalty)
+			if tigerblood.IsValidViolationName(violationType) && tigerblood.IsValidViolationPenalty(parsedPenalty) {
+				penalties[violationType] = uint(parsedPenalty)
+			} else {
+				if !tigerblood.IsValidViolationName(violationType) {
+					log.Printf("Skipping invalid violation type: %s", violationType)
+				}
+				if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
+					log.Printf("Skipping invalid violation penalty: %s", parsedPenalty)
+				}
+			}
 		}
 	}
 	log.Printf("loaded violation map: %s", penalties)

@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-
 // IPAddressFromHTTPPath takes a HTTP path and returns an IPv4 IP if it's found, or an error if none is found.
 func IPAddressFromHTTPPath(path string) (string, error) {
 	path = path[1:len(path)]

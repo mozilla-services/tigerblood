@@ -3,12 +3,7 @@ package tigerblood
 import (
 	"github.com/gorilla/mux"
 	"net/http"
-	"log"
 )
-
-func init() {
-	log.Printf("!!!!")
-}
 
 func NewRouter() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
@@ -71,13 +66,13 @@ var routes = Routes{
 	Route{
 		"UpsertReputationByViolation",
 		"PUT",
-		"/violations/{type}",
+		"/violations/{type:[[:punct:]\\w]{1,255}}",  // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
 		UpsertReputationByViolationHandler,
 	},
 	Route{
 		"ReadReputation",
 		"GET",
-		"/{ip}",
+		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}", // see above note for all punct for IPs w/ colons e.g. 2001:db8::/32
 		ReadReputationHandler,
 	},
 	Route{
@@ -89,13 +84,13 @@ var routes = Routes{
 	Route{
 		"UpdateReputation",
 		"PUT",
-		"/{ip}",
+		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}",
 		UpdateReputationHandler,
 	},
 	Route{
 		"DeleteReputation",
 		"DELETE",
-		"/{ip}",
+		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}",
 		DeleteReputationHandler,
 	},
 }

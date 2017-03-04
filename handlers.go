@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
-	"net"
 	"os"
 	"path"
 	"strings"
@@ -112,6 +111,12 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
+	if !IsValidReputationCIDROrIP(ip) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Invalid IP from HTTP path: %s", splitPath[2])
+		return
+	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -126,6 +131,12 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Printf("Could not unmarshal request body: %s", err)
+		return
+	}
+
+	if !IsValidViolationName(entry.Violation) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Received invalid reputation type: %s", entry.Violation)
 		return
 	}
 
@@ -183,9 +194,14 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if net.ParseIP(entry.IP) == nil {
+	if !IsValidReputationEntry(entry) {
+		if !IsValidReputationCIDROrIP(entry.IP) {
+			log.Printf("Error parsing invalid IP from HTTP body: %s", body)
+		}
+		if !IsValidReputation(entry.Reputation) {
+			log.Printf("Error parsing invalid Reputation from HTTP body: %s", body)
+		}
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Error parsing invalid IP from HTTP body: %s", body)
 		return
 	}
 
@@ -227,6 +243,12 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
+	if !IsValidReputationCIDROrIP(ip) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Invalid IP from HTTP path: %s", r.URL.Path)
+		return
+	}
+
 	var entry ReputationEntry
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -241,6 +263,17 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	entry.IP = ip
+
+	if !IsValidReputationEntry(entry) {
+		if !IsValidReputationCIDROrIP(entry.IP) {
+			log.Printf("Error parsing invalid IP from HTTP body: %s", body)
+		}
+		if !IsValidReputation(entry.Reputation) {
+			log.Printf("Error parsing invalid Reputation from HTTP body: %s", body)
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
@@ -273,6 +306,11 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
+	if !IsValidReputationCIDROrIP(ip) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Invalid IP from HTTP path: %s", r.URL.Path)
+		return
+	}
 
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
@@ -299,6 +337,11 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		// This means there was no IP address found in the path
 		w.WriteHeader(http.StatusBadRequest)
 		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
+		return
+	}
+	if !IsValidReputationCIDROrIP(ip) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Invalid IP from HTTP path: %s", r.URL.Path)
 		return
 	}
 
