@@ -60,6 +60,11 @@ var cases = []struct {
 		"",
 		true,
 	},
+	{
+		"/127.0.0.1/",
+		"",
+		true,
+	},
 }
 
 func TestIPAddressFromHTTPPath(t *testing.T) {
