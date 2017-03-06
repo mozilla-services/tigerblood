@@ -123,16 +123,7 @@ func loadViolationPenalties() map[string]uint {
 		if err != nil {
 			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
 		} else {
-			if tigerblood.IsValidViolationName(violationType) && tigerblood.IsValidViolationPenalty(parsedPenalty) {
-				penalties[violationType] = uint(parsedPenalty)
-			} else {
-				if !tigerblood.IsValidViolationName(violationType) {
-					log.Printf("Skipping invalid violation type: %s", violationType)
-				}
-				if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
-					log.Printf("Skipping invalid violation penalty: %s", parsedPenalty)
-				}
-			}
+			penalties[violationType] = uint(parsedPenalty)
 		}
 	}
 	log.Printf("loaded violation map: %s", penalties)
@@ -169,7 +160,7 @@ func main() {
 
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
 
-	middleware = append(middleware, tigerblood.LogRequestDuration())
+	middleware = append(middleware, tigerblood.LogRequestDuration(1e7))
 
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err := http.ListenAndServe(

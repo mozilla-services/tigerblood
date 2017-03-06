@@ -11,7 +11,6 @@ import (
 
 func init() {
 	mozlogrus.Enable("tigerblood")
-	log.Printf("loaded middleware")
 }
 
 // Middleware wraps an http.Handler with additional functionality.
@@ -51,6 +50,18 @@ func AddStatsdClient(statsdClient *statsd.Client) Middleware {
 }
 
 func AddViolations(violationPenalties map[string]uint) Middleware {
+	for violationType, penalty := range violationPenalties {
+		if !(IsValidViolationName(violationType) && IsValidViolationPenalty(uint64(penalty))) {
+			delete(violationPenalties, violationType)
+			if !IsValidViolationName(violationType) {
+				log.Printf("Skipping invalid violation type: %s", violationType)
+			}
+			if !IsValidViolationPenalty(uint64(penalty)) {
+				log.Printf("Skipping invalid violation penalty: %s", penalty)
+			}
+		}
+	}
+
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, addtoContext(r, ctxPenaltiesKey, violationPenalties))
@@ -58,17 +69,27 @@ func AddViolations(violationPenalties map[string]uint) Middleware {
 	}
 }
 
+
+type ResponseHeader struct {
+	Field string
+	Value string
+}
+var DefaultResponseHeaders = []ResponseHeader{
+	ResponseHeader{"Strict-Transport-Security", "max-age=31536000;"},  // APP-HSTS
+	ResponseHeader{"Public-Key-Pins", `max-age=5184000; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="; pin-sha256="YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2Fuihg="; pin-sha256="sRHdihwgkaib1P1gxX8HFszlD+7/gTfNvuAybgLPNis=";`},  // APP-HPKP
+	ResponseHeader{"Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; report-uri /__cspreport__"},  // APP-CSP
+	ResponseHeader{"Content-Type", "application/json"}, // APP-NOHTML
+
+	ResponseHeader{"X-Frame-Options", "DENY"},
+	ResponseHeader{"X-Content-Type-Options", "nosniff"},
+}
+
 func SetResponseHeaders() Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Strict-Transport-Security", "max-age=31536000;") // APP-HSTS
-			w.Header().Add("Public-Key-Pins", `max-age=5184000; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="; pin-sha256="YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2Fuihg="; pin-sha256="sRHdihwgkaib1P1gxX8HFszlD+7/gTfNvuAybgLPNis=";`) // APP-HPKP
-			w.Header().Add("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; report-uri /__cspreport__")  // APP-CSP
-			w.Header().Add("Content-Type", "application/json") // APP-NOHTML
-
-			w.Header().Add("X-Frame-Options", "DENY")
-			w.Header().Add("X-Content-Type-Options", "nosniff")
-
+			for _, header := range DefaultResponseHeaders {
+				w.Header().Add(header.Field, header.Value)
+			}
 			h.ServeHTTP(w, r)
 		})
 	}
@@ -82,7 +103,7 @@ func RecordStartTime() Middleware {
 	}
 }
 
-func LogRequestDuration() Middleware {
+func LogRequestDuration(slowRequestCutoff int) Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			val := r.Context().Value(ctxStartTimeKey)
@@ -101,7 +122,7 @@ func LogRequestDuration() Middleware {
 			if statsdClient != nil {
 				statsdClient.Histogram("request.duration", float64(time.Since(startTime).Nanoseconds())/float64(1e6), nil, 1)
 			}
-			if time.Since(startTime).Nanoseconds() > 1e7 {
+			if time.Since(startTime).Nanoseconds() > int64(slowRequestCutoff) {
 				log.Printf("Request took %s to process\n", time.Since(startTime))
 			}
 
