@@ -137,3 +137,26 @@ func TestLoadbalancerEndpointsUnauthed(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	}
 }
+
+func TestMissingCredentialsReturns401(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	auth := hawk.NewRequestAuth(req,
+		&hawk.Credentials{
+			ID:   "fxa",
+			Key:  "foobar",
+			Hash: sha256.New,
+		},
+		0,
+	)
+	hash := auth.PayloadHash("application/json")
+	hash.Write([]byte("foobar"))
+	auth.SetHash(hash)
+	req.Header.Set("Authorization", auth.RequestHeader())
+	recorder := httptest.NewRecorder()
+	credentials := map[string]string{"notFxa": "foobar"}
+	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth(credentials)})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
+
