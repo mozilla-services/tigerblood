@@ -18,3 +18,9 @@ rm-db:
 
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
+
+build:
+	go build ./cmd/tigerblood/
+
+build-static:
+	CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
