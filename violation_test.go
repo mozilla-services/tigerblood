@@ -55,34 +55,38 @@ func TestInsertReputationByViolation(t *testing.T) {
 
 	h := HandleWithMiddleware(NewRouter(), []Middleware{AddDB(db), AddViolations(testViolations)})
 
-	// known violation type is subtracted from default reputation
-	recorder := httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "Test:Violation"}`)))
-	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	t.Run("known", func (t *testing.T) {
+		// known violation type is subtracted from default reputation
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "Test:Violation"}`)))
+		assert.Equal(t, http.StatusNoContent, recorder.Code)
 
-	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(10), entry.Reputation)
+		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
+		assert.Nil(t, err)
+		assert.Equal(t, uint(10), entry.Reputation)
+	})
 
-	// invalid violation type returns 400
-	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation!"}`)))
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	t.Run("unknown", func (t *testing.T) {
+		// unknown violation type returns 400
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
 
-	// unknown violation type returns 400
-	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	t.Run("invalid", func (t *testing.T) {
+		// invalid violation type returns 400
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "UnknownViolation!"}`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
 
-	entry, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(10), entry.Reputation)
-
-	// test parsing invalid URL
-	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations////", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-	assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
+	t.Run("invalid-urls", func (t *testing.T) {
+		// test parsing invalid URL
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		recorder = httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations////", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
+	})
 }
