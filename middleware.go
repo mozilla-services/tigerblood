@@ -121,7 +121,9 @@ func LogRequestDuration(slowRequestCutoff int) Middleware {
 				statsdClient.Histogram("request.duration", float64(time.Since(startTime).Nanoseconds())/float64(1e6), nil, 1)
 			}
 			if time.Since(startTime).Nanoseconds() > int64(slowRequestCutoff) {
-				log.Printf("Request took %s to process\n", time.Since(startTime))
+				log.WithFields(log.Fields{
+					"processing_time": time.Since(startTime).Nanoseconds(),
+				}).Infof("Slow request completed successfully.")
 			}
 
 			h.ServeHTTP(w, r)
