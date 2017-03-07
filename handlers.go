@@ -35,7 +35,7 @@ func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 	val := req.Context().Value(ctxDBKey)
 	if val == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find database handler in request context")
+		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		return
 	}
 	db := val.(*DB)
@@ -51,6 +51,7 @@ func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 func VersionHandler(w http.ResponseWriter, req *http.Request) {
 	dir, err := os.Getwd()
 	if err != nil {
+		log.WithFields(log.Fields{"errno": CWDNotFound}).Warnf(DescribeErrno(CWDNotFound), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, "Could not get CWD")
 		return
@@ -58,6 +59,7 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 	filename := path.Clean(dir + string(os.PathSeparator) + "version.json")
 	f, err := os.Open(filename)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": FileNotFound}).Warnf(DescribeErrno(FileNotFound), "version.json", err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -74,16 +76,16 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
 	val := req.Context().Value(ctxPenaltiesKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find violation penalties in request context")
 		return
 	}
 	violationPenalties := val.(map[string]uint)
 
 	json, err := json.Marshal(violationPenalties)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error marshaling violations to JSON: %s", err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -99,28 +101,28 @@ func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
 func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
 	splitPath := strings.Split(r.URL.Path, "/")
 	if len(splitPath) != 3 {
-		log.Printf("Path format is invalid: %s", r.URL.Path)
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), r.URL.Path)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	ip, err := IPAddressFromHTTPPath("/" + splitPath[2])
 
 	if err != nil {
-		// This means there was no IP address found in the path
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
+
 	if !IsValidReputationCIDROrIP(ip) {
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), splitPath[2])
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Invalid IP from HTTP path: %s", splitPath[2])
 		return
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error reading body: %s", err)
 		return
 	}
 	type ViolationBody struct {
@@ -129,21 +131,21 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	var entry ViolationBody
 	err = json.Unmarshal(body, &entry)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Could not unmarshal request body: %s", err)
 		return
 	}
 
 	if !IsValidViolationName(entry.Violation) {
+		log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof("Received invalid reputation type: %s", entry.Violation)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Received invalid reputation type: %s", entry.Violation)
 		return
 	}
 
 	val := r.Context().Value(ctxPenaltiesKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find violation penalties in request context")
 		return
 	}
 	violationPenalties := val.(map[string]uint)
@@ -151,7 +153,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	// lookup violation weight in config map
 	var penalty, ok = violationPenalties[entry.Violation]
 	if !ok {
-		log.Printf("Could not find violation type: %s", entry.Violation)
+		log.WithFields(log.Fields{"errno": MissingViolationTypeError}).Infof("Could not find violation type: %s", entry.Violation)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Violation type not found."))
 		return
@@ -159,20 +161,22 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 
 	val = r.Context().Value(ctxDBKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find database handler in request context")
 		return
 	}
 	db := val.(*DB)
 
 	err = db.InsertOrUpdateReputationPenalty(nil, ip, uint(penalty))
 	if _, ok := err.(CheckViolationError); ok {
+		log.WithFields(log.Fields{"errno": InvalidReputationError}).Warnf("Reputation is outside of valid range [0-100]")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Reputation is outside of valid range [0-100]"))
 	} else if err != nil {
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry by violation: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not update reputation entry by violation: %s", err)
 	} else if err == nil {
+		log.Debugf("Updated reputation for %s due to %d", ip, penalty)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -184,22 +188,22 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error reading body: %s", err)
+		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
 		return
 	}
 	err = json.Unmarshal(body, &entry)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Could not unmarshal request body: %s", err)
 		return
 	}
 
 	if !IsValidReputationEntry(entry) {
 		if !IsValidReputationCIDROrIP(entry.IP) {
-			log.Printf("Error parsing invalid IP from HTTP body: %s", body)
+			log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), entry.IP)
 		}
 		if !IsValidReputation(entry.Reputation) {
-			log.Printf("Error parsing invalid Reputation from HTTP body: %s", body)
+			log.WithFields(log.Fields{"errno": InvalidReputationError}).Infof(DescribeErrno(InvalidReputationError), entry.Reputation)
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -207,8 +211,8 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find database handler in request context")
 		return
 	}
 	db := val.(*DB)
@@ -225,7 +229,7 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Printf("Could not insert reputation entry: %s", err)
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not insert reputation entry: %s", err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -238,38 +242,37 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
-		// This means there was no IP address found in the path
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
 	if !IsValidReputationCIDROrIP(ip) {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Invalid IP from HTTP path: %s", r.URL.Path)
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), ip)
 		return
 	}
 
 	var entry ReputationEntry
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error reading body: %s", err)
 		return
 	}
 	err = json.Unmarshal(body, &entry)
 	if err != nil {
+		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Could not unmarshal request body: %s", err)
 		return
 	}
 	entry.IP = ip
 
 	if !IsValidReputationEntry(entry) {
 		if !IsValidReputationCIDROrIP(entry.IP) {
-			log.Printf("Error parsing invalid IP from HTTP body: %s", body)
+			log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), entry.IP)
 		}
 		if !IsValidReputation(entry.Reputation) {
-			log.Printf("Error parsing invalid Reputation from HTTP body: %s", body)
+			log.WithFields(log.Fields{"errno": InvalidReputationError}).Infof(DescribeErrno(InvalidReputationError), entry.Reputation)
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -277,8 +280,8 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find database handler in request context")
 		return
 	}
 	db := val.(*DB)
@@ -291,7 +294,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not update reputation entry: %s", err)
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry: %s", err)
 	} else if err == nil {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -301,21 +304,20 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
-		// This means there was no IP address found in the path
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
 	if !IsValidReputationCIDROrIP(ip) {
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), ip)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Invalid IP from HTTP path: %s", r.URL.Path)
 		return
 	}
 
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find database handler in request context")
 		return
 	}
 	db := val.(*DB)
@@ -323,7 +325,7 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not delete reputation entry: %s", err)
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not delete reputation entry: %s", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -334,21 +336,20 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
-		// This means there was no IP address found in the path
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("No IP address found in path %s: %s", r.URL.Path, err)
 		return
 	}
 	if !IsValidReputationCIDROrIP(ip) {
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), ip)
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Invalid IP from HTTP path: %s", r.URL.Path)
 		return
 	}
 
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
+		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Could not find database handler in request context")
 		return
 	}
 	db := val.(*DB)
@@ -357,25 +358,27 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 	val = r.Context().Value(ctxStatsdKey)
 	if val != nil {
 		statsdClient = val.(*statsd.Client)
+	} else {
+		log.WithFields(log.Fields{"errno": RequestContextMissingStatsd}).Infof(DescribeErrno(RequestContextMissingStatsd))
 	}
 
 	entry, err := db.SelectSmallestMatchingSubnet(ip)
 	if err == sql.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
-		log.Printf("No entries found for IP %s", ip)
+		log.Debugf("No entries found for IP %s", ip)
 		if statsdClient != nil {
 			statsdClient.Incr("misses", nil, 1.0)
 		}
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error executing SQL: %s", err)
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not get reputation entry: %s", err)
 		return
 	}
 	json, err := json.Marshal(entry)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error marshaling JSON: %s", err)
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "reputation", err)
 		return
 	}
 	if statsdClient != nil {
