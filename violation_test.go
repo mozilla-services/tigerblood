@@ -90,3 +90,14 @@ func TestInsertReputationByViolation(t *testing.T) {
 		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
 	})
 }
+
+func TestInsertReputationByViolationRequiresDB(t *testing.T) {
+	testViolations := map[string]uint{
+		"TestViolation": 90,
+	}
+	h := HandleWithMiddleware(NewRouter(), []Middleware{AddViolations(testViolations)})
+
+	recorder := httptest.ResponseRecorder{}
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "TestViolation"}`)))
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+}
