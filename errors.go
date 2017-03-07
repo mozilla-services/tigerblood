@@ -7,41 +7,42 @@ type Errno uint
 
 const (
 	// auth errors
-	HawkAuthFormatError = 1
-	HawkReplayError = 2
-	HawkErrNoAuth = 3
-	HawkInvalidHash = 4
-	HawkCredError = 5
-	HawkOtherAuthError = 6
-	HawkMissingContentType = 7
-	HawkValidationError = 8
-	HawkInvalidBodyHash = 9
-	HawkReadBodyError = 10
+	_ = iota
+	HawkAuthFormatError
+	HawkReplayError
+	HawkErrNoAuth
+	HawkInvalidHash
+	HawkCredError
+	HawkOtherAuthError
+	HawkMissingContentType
+	HawkValidationError
+	HawkInvalidBodyHash
+	HawkReadBodyError
 
 	// context middleware errors
 	RequestContextMissingDB = 20
-	RequestContextMissingStatsd = 21
-	RequestContextMissingViolations = 22
+	RequestContextMissingStatsd = iota
+	RequestContextMissingViolations = iota
 
 	// encoding/decoding errors
 	BodyReadError = 30
-	JSONMarshalError = 31
-	JSONUnmarshalError = 32
+	JSONMarshalError = iota
+	JSONUnmarshalError = iota
 
 	// validation errors
 	InvalidIPError = 40
-	InvalidReputationError = 41
-	InvalidViolationTypeError = 42
+	InvalidReputationError = iota
+	InvalidViolationTypeError = iota
 
 	// missing parameter errors
 	MissingIPError = 50
-	MissingReputationError = 51
-	MissingViolationTypeError = 52
+	MissingReputationError = iota
+	MissingViolationTypeError = iota
 
 	// IO/DB errors
 	DBError = 60
-	CWDNotFound = 61
-	FileNotFound = 62
+	CWDNotFound = iota
+	FileNotFound = iota
 )
 
 
