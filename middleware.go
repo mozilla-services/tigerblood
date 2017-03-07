@@ -75,8 +75,6 @@ type ResponseHeader struct {
 	Value string
 }
 var DefaultResponseHeaders = []ResponseHeader{
-	ResponseHeader{"Strict-Transport-Security", "max-age=31536000;"},  // APP-HSTS
-	ResponseHeader{"Public-Key-Pins", `max-age=5184000; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="; pin-sha256="YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2Fuihg="; pin-sha256="sRHdihwgkaib1P1gxX8HFszlD+7/gTfNvuAybgLPNis=";`},  // APP-HPKP
 	ResponseHeader{"Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; report-uri /__cspreport__"},  // APP-CSP
 	ResponseHeader{"Content-Type", "application/json"}, // APP-NOHTML
 
