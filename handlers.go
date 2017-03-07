@@ -137,7 +137,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !IsValidViolationName(entry.Violation) {
-		log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof("Received invalid reputation type: %s", entry.Violation)
+		log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof(DescribeErrno(InvalidViolationTypeError), entry.Violation)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
