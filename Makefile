@@ -18,3 +18,14 @@ rm-db:
 
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
+
+coverage:
+	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test -coverprofile=coverage.txt -covermode=atomic
+	sed "s|_$$(pwd)/|./|g" coverage.txt > rel-coverage.txt
+	go tool cover -html=rel-coverage.txt
+
+build:
+	go build ./cmd/tigerblood/
+
+build-static:
+	CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/

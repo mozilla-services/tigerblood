@@ -15,8 +15,6 @@ import (
 	"strings"
 )
 
-
-
 func printConfig() {
 	var fields = log.Fields{}
 	for key, value := range viper.AllSettings() {
@@ -49,9 +47,7 @@ func startRuntimeCollector() {
 	c.Run()
 }
 
-func main() {
-	mozlogrus.Enable("tigerblood")
-
+func loadConfig() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 80)
@@ -71,9 +67,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading config file: %s", err)
 	}
+}
 
-	printConfig()
+func loadCredentials() map[string]string {
+	credentials := viper.GetStringMapString("CREDENTIALS")
+	if len(credentials) == 0 {
+		log.Fatal("Hawk was enabled, but no credentials were found.")
+	} else {
+		log.Printf("Hawk enabled with %d credentials.", len(credentials))
+	}
+	return credentials
+}
 
+func loadDB() *tigerblood.DB {
 	if !viper.IsSet("DSN") {
 		log.Fatalf("No DSN found. Cannot continue without a database")
 	}
@@ -82,18 +88,22 @@ func main() {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
 	db.SetMaxOpenConns(viper.GetInt("DATABASE_MAX_OPEN_CONNS"))
+	return db
+}
 
-	var statsdClient *statsd.Client
-	if viper.IsSet("STATSD_ADDR") {
-		statsdClient, err = statsd.New(viper.GetString("STATSD_ADDR"))
-		statsdClient.Namespace = viper.GetString("STATSD_NAMESPACE")
-		if viper.GetBool("PUBLISH_RUNTIME_STATS") {
-			go startRuntimeCollector()
-		}
-	} else {
-		log.Println("statsd not found")
+func loadStatsd() *statsd.Client {
+	statsdClient, err := statsd.New(viper.GetString("STATSD_ADDR"))
+	if err != nil {
+		log.Fatalf("Error loading statsdClient: %s", err)
 	}
+	statsdClient.Namespace = viper.GetString("STATSD_NAMESPACE")
+	if viper.GetBool("PUBLISH_RUNTIME_STATS") {
+		go startRuntimeCollector()
+	}
+	return statsdClient
+}
 
+func loadViolationPenalties() map[string]uint {
 	if !viper.IsSet("VIOLATION_PENALTIES") {
 		log.Fatal("No violation penalties found.")
 	}
@@ -117,22 +127,44 @@ func main() {
 		}
 	}
 	log.Printf("loaded violation map: %s", penalties)
-	var handler http.Handler = tigerblood.NewTigerbloodHandler(db, statsdClient, penalties)
+
+	return penalties
+}
+
+func main() {
+	mozlogrus.Enable("tigerblood")
+	loadConfig()
+	printConfig()
+
+	var middleware = make([]tigerblood.Middleware, 1)
+	middleware = append(middleware, tigerblood.RecordStartTime())
 
 	if viper.GetBool("HAWK") {
-		credentials := viper.GetStringMapString("CREDENTIALS")
-		if len(credentials) == 0 {
-			log.Fatal("Hawk was enabled, but no credentials were found.")
-		} else {
-			log.Printf("Hawk enabled with %d credentials.", len(credentials))
-		}
-		handler = tigerblood.NewHawkHandler(handler, credentials)
+		credentials := loadCredentials()
+		middleware = append(middleware, tigerblood.RequireHawkAuth(credentials))
 	}
 
-	http.HandleFunc("/", handler.ServeHTTP)
-	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
-	err = http.ListenAndServe(viper.GetString("BIND_ADDR"), nil)
-	if err != nil {
-		log.Fatal(err)
+	db := loadDB()
+	middleware = append(middleware, tigerblood.AddDB(db))
+
+	if viper.IsSet("STATSD_ADDR") {
+		statsdClient := loadStatsd()
+		middleware = append(middleware, tigerblood.AddStatsdClient(statsdClient))
+	} else {
+		log.Println("statsd not found")
 	}
+
+	penalties := loadViolationPenalties()
+	middleware = append(middleware, tigerblood.AddViolations(penalties))
+
+
+	middleware = append(middleware, tigerblood.SetResponseHeaders())
+
+	middleware = append(middleware, tigerblood.LogRequestDuration(1e7))
+
+	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
+	err := http.ListenAndServe(
+		viper.GetString("BIND_ADDR"),
+		tigerblood.HandleWithMiddleware(tigerblood.NewRouter(), middleware))
+	log.Fatal(err)
 }
