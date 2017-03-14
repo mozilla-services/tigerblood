@@ -136,7 +136,7 @@ func main() {
 	loadConfig()
 	printConfig()
 
-	var middleware = make([]tigerblood.Middleware, 1)
+	var middleware []tigerblood.Middleware
 	middleware = append(middleware, tigerblood.RecordStartTime())
 
 	if viper.GetBool("HAWK") {
