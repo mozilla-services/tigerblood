@@ -3,6 +3,9 @@ package tigerblood
 import (
 	"fmt"
 	"net"
+	"net/http"
+	"io"
+	"io/ioutil"
 	"strings"
 )
 
@@ -27,4 +30,14 @@ func IPAddressFromHTTPPath(path string) (string, error) {
 	}
 	network.IP = ip
 	return network.String(), nil
+}
+
+func DumpBody(req *http.Request) {
+	// when running behind nginx connection reset by peer issues arise
+	// in issue https://github.com/golang/go/issues/15789 it could be that
+	// nginx requires the whole request to be read before a response can be generated
+	if req.Body != nil {
+		io.Copy(ioutil.Discard, req.Body)
+		req.Body.Close()
+	}
 }

@@ -27,11 +27,13 @@ func init() {
 }
 
 func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
+	DumpBody(req)
 	w.WriteHeader(http.StatusOK)
 	return
 }
 
 func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
+	DumpBody(req)
 	val := req.Context().Value(ctxDBKey)
 	if val == nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -49,6 +51,7 @@ func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func VersionHandler(w http.ResponseWriter, req *http.Request) {
+	DumpBody(req)
 	dir, err := os.Getwd()
 	if err != nil {
 		log.WithFields(log.Fields{"errno": CWDNotFound}).Warnf(DescribeErrno(CWDNotFound), err)
@@ -74,6 +77,8 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 
 // Returns a list of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
+	DumpBody(req)
+
 	val := req.Context().Value(ctxPenaltiesKey)
 	if val == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
@@ -102,6 +107,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	splitPath := strings.Split(r.URL.Path, "/")
 	if len(splitPath) != 3 {
 		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), r.URL.Path)
+		DumpBody(r)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -109,12 +115,14 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 
 	if err != nil {
 		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
+		DumpBody(r)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if !IsValidReputationCIDROrIP(ip) {
 		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), splitPath[2])
+		DumpBody(r)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -122,6 +130,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
+		DumpBody(r)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -132,6 +141,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	err = json.Unmarshal(body, &entry)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
+		DumpBody(r)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -187,6 +197,7 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	var entry ReputationEntry
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		DumpBody(r)
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
 		return
@@ -243,10 +254,12 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
+		DumpBody(r)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if !IsValidReputationCIDROrIP(ip) {
+		DumpBody(r)
 		w.WriteHeader(http.StatusBadRequest)
 		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), ip)
 		return
@@ -256,6 +269,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
+		DumpBody(r)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -302,6 +316,8 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 
 // DeleteReputation deletes an entry based on the IP address provided on the path
 func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
+	DumpBody(r)
+
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
@@ -334,6 +350,8 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 
 // ReadReputation returns a JSON-formatted reputation entry from the database.
 func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
+	DumpBody(r)
+
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
