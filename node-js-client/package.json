@@ -1,0 +1,41 @@
+{
+  "name": "ip-reputation-service-client-js",
+  "version": "1.0.0",
+  "description": "A node.js client library to the IP reputation service/Tigerblood",
+  "main": "lib/client.js",
+  "scripts": {
+    "test": "scripts/test-local.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/mozilla-services/tigerblood.git"
+  },
+  "author": "",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/mozilla-services/tigerblood/issues"
+  },
+  "homepage": "https://github.com/mozilla-services/tigerblood#readme",
+  "dependencies": {
+    "bluebird": "3.4.6",
+    "joi": "9.2.0",
+    "request": "2.75.0"
+  },
+  "devDependencies": {
+    "coveralls": "2.11.14",
+    "eslint-config-fxa": "2.1.0",
+    "grunt": "1.0.1",
+    "grunt-bump": "0.8.0",
+    "grunt-cli": "1.2.0",
+    "grunt-copyright": "0.3.0",
+    "grunt-eslint": "18.0.0",
+    "grunt-nsp": "2.3.1",
+    "load-grunt-tasks": "3.5.0",
+    "nyc": "8.3.2",
+    "tap": "6.2.0",
+    "walk": "2.3.x"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  }
+}
