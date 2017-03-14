@@ -74,6 +74,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 				default:
 					log.WithFields(log.Fields{"errno": HawkOtherAuthError}).Warnf("other hawk auth error: %s", err)
 				}
+				DumpBody(r)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -82,6 +83,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 			validationError := auth.Valid()
 			if validationError != nil {
 				log.WithFields(log.Fields{"errno": HawkValidationError}).Warnf("hawk validation error: %s", validationError)
+				DumpBody(r)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -96,6 +98,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 			buf, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				log.WithFields(log.Fields{"errno": HawkReadBodyError}).Warnf("hawk: error reading body %s", err)
+				DumpBody(r)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -105,6 +108,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 			io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
 			if !auth.ValidHash(hash) {
 				log.WithFields(log.Fields{"errno": HawkInvalidBodyHash}).Warnf("hawk: invalid payload hash")
+				DumpBody(r)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
