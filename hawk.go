@@ -89,7 +89,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 			// Validate the payload hash of the request Content-Type and body
 			// assuming bodies will fit in memory always validate the body
 			contentType := r.Header.Get("Content-Type")
-			if contentType == "" {
+			if r.Method != "GET" && r.Method != "DELETE" && contentType == "" {
 				log.WithFields(log.Fields{"errno": HawkMissingContentType}).Warn("hawk: missing content-type")
 			}
 
