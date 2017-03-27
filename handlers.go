@@ -328,17 +328,10 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if statsdClient == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingStatsd}).Infof(DescribeErrno(RequestContextMissingStatsd))
-	}
-
 	entry, err := db.SelectSmallestMatchingSubnet(ip)
 	if err == sql.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		log.Debugf("No entries found for IP %s", ip)
-		if statsdClient != nil {
-			statsdClient.Incr("misses", nil, 1.0)
-		}
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -350,9 +343,6 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "reputation", err)
 		return
-	}
-	if statsdClient != nil {
-		statsdClient.Incr("hits", nil, 1.0)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(json)
