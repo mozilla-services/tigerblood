@@ -158,6 +158,7 @@ func main() {
 	}
 
 	penalties := loadViolationPenalties()
+	tigerblood.SetViolationPenalties(penalties)
 	middleware = append(middleware, tigerblood.AddViolations(penalties))
 
 

@@ -6,6 +6,7 @@ import (
 
 var db *DB = nil
 var statsdClient *statsd.Client = nil
+var violationPenalties map[string]uint = nil
 
 func SetDB(newDb *DB) {
 	db = newDb
@@ -13,4 +14,8 @@ func SetDB(newDb *DB) {
 
 func SetStatsdClient(newClient *statsd.Client) {
 	statsdClient = newClient
+}
+
+func SetViolationPenalties(newPenalties map[string]uint) {
+	violationPenalties = newPenalties
 }
