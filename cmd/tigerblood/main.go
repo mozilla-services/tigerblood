@@ -149,8 +149,7 @@ func main() {
 	var middleware []tigerblood.Middleware
 
 	if viper.GetBool("HAWK") {
-		credentials := loadCredentials()
-		middleware = append(middleware, tigerblood.RequireHawkAuth(credentials))
+		middleware = append(middleware, tigerblood.RequireHawkAuth(loadCredentials()))
 	}
 
 	tigerblood.SetProfileHandlers(viper.GetBool("PROFILE"))
