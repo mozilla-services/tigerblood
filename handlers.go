@@ -68,21 +68,15 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 
 // Returns a list of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
-	if violationPenalties == nil {
+	if violationPenalties == nil || violationPenaltiesJson == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	json, err := json.Marshal(violationPenalties)
-	if err != nil {
-		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(json)
+	w.Write(violationPenaltiesJson)
 }
 
 // UpsertReputationByViolation takes a JSON body from the http request
