@@ -346,16 +346,14 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	var statsdClient *statsd.Client = nil
-	val = r.Context().Value(ctxStatsdKey)
+	val := r.Context().Value(ctxStatsdKey)
 	if val != nil {
 		statsdClient = val.(*statsd.Client)
 	} else {

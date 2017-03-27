@@ -146,6 +146,7 @@ func main() {
 	}
 
 	db := loadDB()
+	tigerblood.SetDB(db)
 	middleware = append(middleware, tigerblood.AddDB(db))
 
 	if viper.IsSet("STATSD_ADDR") {
