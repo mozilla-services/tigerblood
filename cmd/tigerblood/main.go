@@ -151,6 +151,7 @@ func main() {
 
 	if viper.IsSet("STATSD_ADDR") {
 		statsdClient := loadStatsd()
+		tigerblood.SetStatsdClient(statsdClient)
 		middleware = append(middleware, tigerblood.AddStatsdClient(statsdClient))
 	} else {
 		log.Println("statsd not found")

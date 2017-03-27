@@ -3,7 +3,6 @@ package tigerblood
 import (
 	log "github.com/Sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
-	"github.com/DataDog/datadog-go/statsd"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -352,11 +351,7 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var statsdClient *statsd.Client = nil
-	val := r.Context().Value(ctxStatsdKey)
-	if val != nil {
-		statsdClient = val.(*statsd.Client)
-	} else {
+	if statsdClient == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingStatsd}).Infof(DescribeErrno(RequestContextMissingStatsd))
 	}
 
