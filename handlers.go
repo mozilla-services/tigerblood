@@ -15,7 +15,6 @@ import (
 
 // Context Keys
 const (
-	ctxStatsdKey = "statsd"
 	ctxStartTimeKey = "startTime"
 )
 

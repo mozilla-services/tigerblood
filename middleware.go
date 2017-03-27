@@ -3,7 +3,6 @@ package tigerblood
 import (
 	log "github.com/Sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
-	"github.com/DataDog/datadog-go/statsd"
 	"net/http"
 	"context"
 	"time"
@@ -31,14 +30,6 @@ func HandleWithMiddleware(h http.Handler, adapters []Middleware) http.Handler {
 func addtoContext(r *http.Request, key string, value interface{}) *http.Request {
 	ctx := r.Context()
 	return r.WithContext(context.WithValue(ctx, key, value))
-}
-
-func AddStatsdClient(statsdClient *statsd.Client) Middleware {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, addtoContext(r, ctxStatsdKey, statsdClient))
-		})
-	}
 }
 
 type ResponseHeader struct {
@@ -81,12 +72,6 @@ func LogRequestDuration(slowRequestCutoff int) Middleware {
 				return
 			}
 			startTime := val.(time.Time)
-
-			var statsdClient *statsd.Client = nil
-			val = r.Context().Value(ctxStatsdKey)
-			if val != nil {
-				statsdClient = val.(*statsd.Client)
-			}
 
 			if statsdClient != nil {
 				statsdClient.Histogram("request.duration", float64(time.Since(startTime).Nanoseconds())/float64(1e6), nil, 1)
