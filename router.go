@@ -3,10 +3,22 @@ package tigerblood
 import (
 	"github.com/gorilla/mux"
 	"net/http"
+	"net/http/pprof"
 )
+
+
+func AttachProfiler(router *mux.Router) {
+	// Register pprof handlers
+	router.HandleFunc("/debug/pprof/", pprof.Index)
+	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+}
 
 func NewRouter() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
+
+	AttachProfiler(router)
 
 	for _, route := range routes {
 		var handler http.Handler
@@ -36,6 +48,10 @@ var UnauthedRoutes = map[string]bool{
 	"/__lbheartbeat__": true,
 	"/__heartbeat__": true,
 	"/__version__": true,
+	"/debug/pprof/": true,
+	"/debug/pprof/cmdline": true,
+	"/debug/pprof/profile": true,
+	"/debug/pprof/symbol": true,
 }
 
 var routes = Routes{

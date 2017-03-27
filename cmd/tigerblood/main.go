@@ -12,6 +12,7 @@ import (
 	"time"
 	"strconv"
 	"net/http"
+	_ "net/http/pprof"
 	"strings"
 )
 
