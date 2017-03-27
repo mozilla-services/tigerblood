@@ -16,7 +16,6 @@ import (
 // Context Keys
 const (
 	ctxDBKey = "db"
-	ctxPenaltiesKey = "violationPenalties"
 	ctxStatsdKey = "statsd"
 	ctxStartTimeKey = "startTime"
 )
@@ -73,13 +72,11 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 
 // Returns a list of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(ctxPenaltiesKey)
-	if val == nil {
+	if violationPenalties == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	violationPenalties := val.(map[string]uint)
 
 	json, err := json.Marshal(violationPenalties)
 	if err != nil {
@@ -141,13 +138,11 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	val := r.Context().Value(ctxPenaltiesKey)
-	if val == nil {
+	if violationPenalties == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	violationPenalties := val.(map[string]uint)
 
 	// lookup violation weight in config map
 	var penalty, ok = violationPenalties[entry.Violation]

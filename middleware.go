@@ -49,27 +49,6 @@ func AddStatsdClient(statsdClient *statsd.Client) Middleware {
 	}
 }
 
-func AddViolations(violationPenalties map[string]uint) Middleware {
-	for violationType, penalty := range violationPenalties {
-		if !(IsValidViolationName(violationType) && IsValidViolationPenalty(uint64(penalty))) {
-			delete(violationPenalties, violationType)
-			if !IsValidViolationName(violationType) {
-				log.Printf("Skipping invalid violation type: %s", violationType)
-			}
-			if !IsValidViolationPenalty(uint64(penalty)) {
-				log.Printf("Skipping invalid violation penalty: %s", penalty)
-			}
-		}
-	}
-
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, addtoContext(r, ctxPenaltiesKey, violationPenalties))
-		})
-	}
-}
-
-
 type ResponseHeader struct {
 	Field string
 	Value string

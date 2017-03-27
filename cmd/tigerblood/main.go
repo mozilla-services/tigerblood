@@ -123,9 +123,17 @@ func loadViolationPenalties() map[string]uint {
 		parsedPenalty, err := strconv.ParseUint(penalty, 10, 64)
 		if err != nil {
 			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
-		} else {
-			penalties[violationType] = uint(parsedPenalty)
+			continue
 		}
+		if !tigerblood.IsValidViolationName(violationType) {
+			log.Printf("Skipping invalid violation type: %s", violationType)
+			continue
+		}
+		if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
+			log.Printf("Skipping invalid violation penalty: %s", parsedPenalty)
+			continue
+		}
+		penalties[violationType] = uint(parsedPenalty)
 	}
 	log.Printf("loaded violation map: %s", penalties)
 
@@ -157,9 +165,7 @@ func main() {
 		log.Println("statsd not found")
 	}
 
-	penalties := loadViolationPenalties()
-	tigerblood.SetViolationPenalties(penalties)
-	middleware = append(middleware, tigerblood.AddViolations(penalties))
+	tigerblood.SetViolationPenalties(loadViolationPenalties())
 
 
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
