@@ -16,7 +16,9 @@ func TestListViolations(t *testing.T) {
 		"TestViolation:2": 20,
 	}
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{AddViolations(testViolations)})
+	SetViolationPenalties(testViolations)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	req := httptest.NewRequest("GET", "/violations", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -32,6 +34,8 @@ func TestListViolations(t *testing.T) {
 }
 
 func TestListViolationsMissingViolationsMiddleware(t *testing.T) {
+	SetViolationPenalties(nil)
+
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	req := httptest.NewRequest("GET", "/violations", nil)
 	recorder := httptest.NewRecorder()
@@ -53,7 +57,10 @@ func TestInsertReputationByViolation(t *testing.T) {
 		"Test:Violation": 90,
 	}
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{AddDB(db), AddViolations(testViolations)})
+	SetDB(db)
+	SetViolationPenalties(testViolations)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 
 	t.Run("known", func (t *testing.T) {
 		// known violation type is subtracted from default reputation
@@ -95,7 +102,11 @@ func TestInsertReputationByViolationRequiresDB(t *testing.T) {
 	testViolations := map[string]uint{
 		"TestViolation": 90,
 	}
-	h := HandleWithMiddleware(NewRouter(), []Middleware{AddViolations(testViolations)})
+	SetViolationPenalties(testViolations)
+
+	SetDB(nil)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 
 	recorder := httptest.ResponseRecorder{}
 	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "TestViolation"}`)))

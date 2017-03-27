@@ -30,6 +30,18 @@ func SetStatsdClient(newClient *statsd.Client) {
 }
 
 func SetViolationPenalties(newPenalties map[string]uint) {
+	for violationType, penalty := range newPenalties {
+		if !(IsValidViolationName(violationType) && IsValidViolationPenalty(uint64(penalty))) {
+			delete(newPenalties, violationType)
+			if !IsValidViolationName(violationType) {
+				log.Printf("Skipping invalid violation type: %s", violationType)
+			}
+			if !IsValidViolationPenalty(uint64(penalty)) {
+				log.Printf("Skipping invalid violation penalty: %s", penalty)
+			}
+		}
+ 	}
+
 	violationPenalties = newPenalties
 
 	// set violationPenaltiesJson
