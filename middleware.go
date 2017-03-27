@@ -33,14 +33,6 @@ func addtoContext(r *http.Request, key string, value interface{}) *http.Request 
 	return r.WithContext(context.WithValue(ctx, key, value))
 }
 
-func AddDB(db *DB) Middleware {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, addtoContext(r, ctxDBKey, db))
-		})
-	}
-}
-
 func AddStatsdClient(statsdClient *statsd.Client) Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

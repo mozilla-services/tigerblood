@@ -153,9 +153,7 @@ func main() {
 		middleware = append(middleware, tigerblood.RequireHawkAuth(credentials))
 	}
 
-	db := loadDB()
-	tigerblood.SetDB(db)
-	middleware = append(middleware, tigerblood.AddDB(db))
+	tigerblood.SetDB(loadDB())
 
 	if viper.IsSet("STATSD_ADDR") {
 		statsdClient := loadStatsd()

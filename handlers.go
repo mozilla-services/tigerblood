@@ -15,7 +15,6 @@ import (
 
 // Context Keys
 const (
-	ctxDBKey = "db"
 	ctxStatsdKey = "statsd"
 	ctxStartTimeKey = "startTime"
 )
@@ -30,13 +29,11 @@ func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		return
 	}
-	db := val.(*DB)
 
 	err := db.Ping()
 	if err != nil {
@@ -153,13 +150,11 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	val = r.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.InsertOrUpdateReputationPenalty(nil, ip, uint(penalty))
 	if _, ok := err.(CheckViolationError); ok {
@@ -203,13 +198,11 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.InsertReputationEntry(nil, entry)
 	if _, ok := err.(CheckViolationError); ok {
@@ -272,13 +265,11 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.UpdateReputationEntry(nil, entry)
 	if _, ok := err.(CheckViolationError); ok {
@@ -308,13 +299,11 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
 	if err != nil {
