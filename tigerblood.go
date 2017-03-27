@@ -11,6 +11,7 @@ var db *DB = nil
 var statsdClient *statsd.Client = nil
 var violationPenalties map[string]uint = nil
 var violationPenaltiesJson []byte = nil
+var useProfileHandlers = false
 
 func init() {
 	mozlogrus.Enable("tigerblood")
@@ -18,6 +19,10 @@ func init() {
 
 func SetDB(newDb *DB) {
 	db = newDb
+}
+
+func SetProfileHandlers(profileHandlers bool) {
+	useProfileHandlers = profileHandlers
 }
 
 func SetStatsdClient(newClient *statsd.Client) {

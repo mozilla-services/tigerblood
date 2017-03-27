@@ -61,6 +61,7 @@ func loadConfig() {
 	viper.SetDefault("RUNTIME_CPU", true)
 	viper.SetDefault("RUNTIME_MEM", true)
 	viper.SetDefault("RUNTIME_GC", true)
+	viper.SetDefault("PROFILE", false)
 
 	viper.SetEnvPrefix("tigerblood")
 	viper.AutomaticEnv()
@@ -152,6 +153,8 @@ func main() {
 		credentials := loadCredentials()
 		middleware = append(middleware, tigerblood.RequireHawkAuth(credentials))
 	}
+
+	tigerblood.SetProfileHandlers(viper.GetBool("PROFILE"))
 
 	tigerblood.SetDB(loadDB())
 

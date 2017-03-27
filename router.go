@@ -18,7 +18,9 @@ func AttachProfiler(router *mux.Router) {
 func NewRouter() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 
-	AttachProfiler(router)
+	if useProfileHandlers {
+		AttachProfiler(router)
+	}
 
 	for _, route := range routes {
 		var handler http.Handler
