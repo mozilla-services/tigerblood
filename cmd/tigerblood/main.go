@@ -147,7 +147,6 @@ func main() {
 	printConfig()
 
 	var middleware []tigerblood.Middleware
-	middleware = append(middleware, tigerblood.RecordStartTime())
 
 	if viper.GetBool("HAWK") {
 		credentials := loadCredentials()
@@ -166,10 +165,7 @@ func main() {
 
 	tigerblood.SetViolationPenalties(loadViolationPenalties())
 
-
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
-
-	middleware = append(middleware, tigerblood.LogRequestDuration(1e7))
 
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err := http.ListenAndServe(
