@@ -13,11 +13,6 @@ import (
 	"strings"
 )
 
-// Context Keys
-const (
-	ctxStartTimeKey = "startTime"
-)
-
 func init() {
 	mozlogrus.Enable("tigerblood")
 }
