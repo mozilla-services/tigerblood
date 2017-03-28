@@ -204,3 +204,13 @@ func TestDeleteEntry(t *testing.T) {
 	_, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.NotNil(t, err)
 }
+
+func TestDeleteEntryNoDB(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+
+	SetDB(nil)
+	h.ServeHTTP(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil))
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+}
