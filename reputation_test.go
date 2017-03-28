@@ -163,6 +163,29 @@ func TestUpdateEntry(t *testing.T) {
 	assert.Equal(t, uint(25), entry.Reputation)
 }
 
+func TestUpdateEntryInvalidJson(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+
+	SetDB(db)
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": `)))
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func TestUpdateEntryNoDB(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+
+	SetDB(nil)
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+}
+
 func TestDeleteEntry(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
 	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
