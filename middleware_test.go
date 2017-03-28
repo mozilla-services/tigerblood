@@ -28,7 +28,7 @@ func randViolations(numEntries int) map[string]uint {
 	return violations
 }
 
-func TestAddViolationsMiddlewareSkipsInvalidPenalties(t *testing.T) {
+func TestSetViolationPenaltiesSkipsInvalidPenalties(t *testing.T) {
 	testViolations := map[string]uint{
 		"": 20,
 		"TestViolation:2": 120,
