@@ -69,7 +69,10 @@ func NewDB(dsn string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(100)
+	db.SetMaxOpenConns(200)
+	db.SetMaxIdleConns(200)  // default is 2: https://golang.org/src/database/sql/sql.go#L652
+	db.SetConnMaxLifetime(0) // don't timeout
+
 	newDB := &DB{
 		DB: db,
 	}

@@ -19,22 +19,22 @@ const (
 	HawkInvalidBodyHash
 	HawkReadBodyError
 
-	// context middleware errors
-	RequestContextMissingDB = 20
-	RequestContextMissingStatsd = iota
-	RequestContextMissingViolations = iota
+	// missing global errors usually result in warnings or 500 errors
+	MissingDB = 20
+	MissingStatsdClient = iota
+	MissingViolations = iota
 
 	// encoding/decoding errors
 	BodyReadError = 30
 	JSONMarshalError = iota
 	JSONUnmarshalError = iota
 
-	// validation errors
+	// validation errors usually result in a 400 error
 	InvalidIPError = 40
 	InvalidReputationError = iota
 	InvalidViolationTypeError = iota
 
-	// missing parameter errors
+	// missing parameter errors usually result in a 400 error
 	MissingIPError = 50
 	MissingReputationError = iota
 	MissingViolationTypeError = iota
@@ -72,12 +72,12 @@ func DescribeErrno(errno Errno) string {
 	case MissingViolationTypeError:
 		return "Error finding violation type in %s: %s"
 
-	case RequestContextMissingDB:
-		return "Could not find database handler in request context."
-	case RequestContextMissingViolations:
-		return "Could not find violation penalties in request context."
-	case RequestContextMissingStatsd:
-		return "Could not find statsdClient in request context."
+	case MissingDB:
+		return "Could not find database."
+	case MissingViolations:
+		return "Could not find violation penalties."
+	case MissingStatsdClient:
+		return "Could not find statsdClient."
 
 	case CWDNotFound:
 		return "Error getting CWD: %s"

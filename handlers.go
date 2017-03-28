@@ -3,7 +3,6 @@ package tigerblood
 import (
 	log "github.com/Sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
-	"github.com/DataDog/datadog-go/statsd"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -12,14 +11,6 @@ import (
 	"os"
 	"path"
 	"strings"
-)
-
-// Context Keys
-const (
-	ctxDBKey = "db"
-	ctxPenaltiesKey = "violationPenalties"
-	ctxStatsdKey = "statsd"
-	ctxStartTimeKey = "startTime"
 )
 
 func init() {
@@ -32,13 +23,11 @@ func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(ctxDBKey)
-	if val == nil {
+	if db == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		return
 	}
-	db := val.(*DB)
 
 	err := db.Ping()
 	if err != nil {
@@ -74,23 +63,15 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 
 // Returns a list of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(ctxPenaltiesKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
+	if violationPenalties == nil || violationPenaltiesJson == nil {
+		log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	violationPenalties := val.(map[string]uint)
 
-	json, err := json.Marshal(violationPenalties)
-	if err != nil {
-		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(json)
+	w.Write(violationPenaltiesJson)
 }
 
 // UpsertReputationByViolation takes a JSON body from the http request
@@ -142,13 +123,11 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	val := r.Context().Value(ctxPenaltiesKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
+	if violationPenalties == nil {
+		log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	violationPenalties := val.(map[string]uint)
 
 	// lookup violation weight in config map
 	var penalty, ok = violationPenalties[entry.Violation]
@@ -159,13 +138,11 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	val = r.Context().Value(ctxDBKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.InsertOrUpdateReputationPenalty(nil, ip, uint(penalty))
 	if _, ok := err.(CheckViolationError); ok {
@@ -209,13 +186,11 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.InsertReputationEntry(nil, entry)
 	if _, ok := err.(CheckViolationError); ok {
@@ -278,13 +253,11 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.UpdateReputationEntry(nil, entry)
 	if _, ok := err.(CheckViolationError); ok {
@@ -314,13 +287,11 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db := val.(*DB)
 
 	err = db.DeleteReputationEntry(nil, ReputationEntry{IP: ip})
 	if err != nil {
@@ -346,29 +317,16 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	val := r.Context().Value(ctxDBKey)
-	if val == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	}
-	db := val.(*DB)
-
-	var statsdClient *statsd.Client = nil
-	val = r.Context().Value(ctxStatsdKey)
-	if val != nil {
-		statsdClient = val.(*statsd.Client)
-	} else {
-		log.WithFields(log.Fields{"errno": RequestContextMissingStatsd}).Infof(DescribeErrno(RequestContextMissingStatsd))
 	}
 
 	entry, err := db.SelectSmallestMatchingSubnet(ip)
 	if err == sql.ErrNoRows {
 		w.WriteHeader(http.StatusNotFound)
 		log.Debugf("No entries found for IP %s", ip)
-		if statsdClient != nil {
-			statsdClient.Incr("misses", nil, 1.0)
-		}
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -380,9 +338,6 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "reputation", err)
 		return
-	}
-	if statsdClient != nil {
-		statsdClient.Incr("hits", nil, 1.0)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(json)

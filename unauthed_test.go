@@ -24,7 +24,8 @@ func TestHeartbeatHandler(t *testing.T) {
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{AddDB(db)})
+	SetDB(db)
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	req := httptest.NewRequest("GET", "/__heartbeat__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -34,6 +35,8 @@ func TestHeartbeatHandler(t *testing.T) {
 }
 
 func TestHeartbeatHandlerWithoutDB(t *testing.T) {
+	SetDB(nil)
+
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	req := httptest.NewRequest("GET", "/__heartbeat__", nil)
 	recorder := httptest.NewRecorder()
@@ -51,4 +54,28 @@ func TestVersionHandler(t *testing.T) {
 	res := recorder.Result()
 
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
+func TestDebugRoutesWhenProfileHandlersEnabled(t *testing.T) {
+	SetProfileHandlers(true)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	recorder := httptest.NewRecorder()
+	h.ServeHTTP(recorder, req)
+	res := recorder.Result()
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
+func TestDebugRoutesWhenProfileHandlersDisabled(t *testing.T) {
+	SetProfileHandlers(false)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	recorder := httptest.NewRecorder()
+	h.ServeHTTP(recorder, req)
+	res := recorder.Result()
+
+	assert.Equal(t, http.StatusMovedPermanently, res.StatusCode)
 }

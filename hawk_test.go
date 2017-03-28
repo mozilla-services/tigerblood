@@ -84,6 +84,30 @@ func TestValidPayload(t *testing.T) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
 
+func TestValidPayloadNoContentType(t *testing.T) {
+	// use a POST to hit log the missing content type warning
+	req, err := http.NewRequest("POST", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	req.Header.Set("Content-Type", "")
+	auth := hawk.NewRequestAuth(req,
+		&hawk.Credentials{
+			ID:   "fxa",
+			Key:  "foobar",
+			Hash: sha256.New,
+		},
+		0,
+	)
+	hash := auth.PayloadHash("")
+	hash.Write([]byte("foo"))
+	auth.SetHash(hash)
+	req.Header.Set("Authorization", auth.RequestHeader())
+	recorder := httptest.NewRecorder()
+	credentials := map[string]string{"fxa": "foobar"}
+	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth(credentials)})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
 func TestExpiration(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
@@ -123,10 +147,16 @@ func TestReplayProtection(t *testing.T) {
 }
 
 func TestLoadbalancerEndpointsUnauthed(t *testing.T) {
+	SetProfileHandlers(true)
+
 	for _, path := range []string{
 		"/__lbheartbeat__",
 		"/__heartbeat__",
 		"/__version__",
+		"/debug/pprof/",
+		"/debug/pprof/cmdline",
+		"/debug/pprof/profile",
+		"/debug/pprof/symbol",
 	} {
 		req, err := http.NewRequest("GET", "http://foo.bar"+path, nil)
 		assert.Nil(t, err)
@@ -159,4 +189,3 @@ func TestMissingCredentialsReturns401(t *testing.T) {
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
-

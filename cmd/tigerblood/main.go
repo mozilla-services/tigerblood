@@ -12,6 +12,7 @@ import (
 	"time"
 	"strconv"
 	"net/http"
+	_ "net/http/pprof"
 	"strings"
 )
 
@@ -60,6 +61,7 @@ func loadConfig() {
 	viper.SetDefault("RUNTIME_CPU", true)
 	viper.SetDefault("RUNTIME_MEM", true)
 	viper.SetDefault("RUNTIME_GC", true)
+	viper.SetDefault("PROFILE", false)
 
 	viper.SetEnvPrefix("tigerblood")
 	viper.AutomaticEnv()
@@ -88,6 +90,18 @@ func loadDB() *tigerblood.DB {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
 	db.SetMaxOpenConns(viper.GetInt("DATABASE_MAX_OPEN_CONNS"))
+	db.SetMaxIdleConns(viper.GetInt("DATABASE_MAX_IDLE_CONNS"))
+
+	if viper.GetString("DATABASE_MAXLIFETIME") == "0" {
+		db.SetConnMaxLifetime(time.Duration(0))
+	} else {
+		lifetime, err := time.ParseDuration(viper.GetString("DATABASE_CONN_MAXLIFETIME"))
+		if err != nil {
+			db.SetConnMaxLifetime(lifetime)
+		} else {
+			log.Warnf("Error parsing conn db max lifetime: %s", err)
+		}
+	}
 	return db
 }
 
@@ -122,9 +136,17 @@ func loadViolationPenalties() map[string]uint {
 		parsedPenalty, err := strconv.ParseUint(penalty, 10, 64)
 		if err != nil {
 			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
-		} else {
-			penalties[violationType] = uint(parsedPenalty)
+			continue
 		}
+		if !tigerblood.IsValidViolationName(violationType) {
+			log.Printf("Skipping invalid violation type: %s", violationType)
+			continue
+		}
+		if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
+			log.Printf("Skipping invalid violation penalty: %s", parsedPenalty)
+			continue
+		}
+		penalties[violationType] = uint(parsedPenalty)
 	}
 	log.Printf("loaded violation map: %s", penalties)
 
@@ -137,30 +159,24 @@ func main() {
 	printConfig()
 
 	var middleware []tigerblood.Middleware
-	middleware = append(middleware, tigerblood.RecordStartTime())
 
 	if viper.GetBool("HAWK") {
-		credentials := loadCredentials()
-		middleware = append(middleware, tigerblood.RequireHawkAuth(credentials))
+		middleware = append(middleware, tigerblood.RequireHawkAuth(loadCredentials()))
 	}
 
-	db := loadDB()
-	middleware = append(middleware, tigerblood.AddDB(db))
+	tigerblood.SetProfileHandlers(viper.GetBool("PROFILE"))
+
+	tigerblood.SetDB(loadDB())
 
 	if viper.IsSet("STATSD_ADDR") {
-		statsdClient := loadStatsd()
-		middleware = append(middleware, tigerblood.AddStatsdClient(statsdClient))
+		tigerblood.SetStatsdClient(loadStatsd())
 	} else {
 		log.Println("statsd not found")
 	}
 
-	penalties := loadViolationPenalties()
-	middleware = append(middleware, tigerblood.AddViolations(penalties))
-
+	tigerblood.SetViolationPenalties(loadViolationPenalties())
 
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
-
-	middleware = append(middleware, tigerblood.LogRequestDuration(1e7))
 
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err := http.ListenAndServe(

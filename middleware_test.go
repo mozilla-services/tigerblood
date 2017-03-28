@@ -1,34 +1,13 @@
 package tigerblood
 
 import (
-	"github.com/DataDog/datadog-go/statsd"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 	"math/rand"
 	"io/ioutil"
 )
-
-
-
-func TestDurationTrackingMiddlewareWithStatsd(t *testing.T) {
-	statsdClient, err := statsd.New("127.0.0.1:39209")
-	assert.Nil(t, err)
-	statsdClient.Namespace = "TestDurationTrackingMiddlewareWithStatsd."
-
-	h := HandleWithMiddleware(NewRouter(), []Middleware{RecordStartTime(), AddStatsdClient(statsdClient), LogRequestDuration(1e7)})
-	req := httptest.NewRequest("GET", "/__version__", nil)
-	recorder := httptest.NewRecorder()
-	h.ServeHTTP(recorder, req)
-	res := recorder.Result()
-
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	// TODO: assert statsd receives data
-}
-
 
 // http://stackoverflow.com/a/22892986
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -49,33 +28,15 @@ func randViolations(numEntries int) map[string]uint {
 	return violations
 }
 
-
-func TestDurationTrackingMiddlewareLogsSlowRequest(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	testViolations := randViolations(9001)
-	slowRequestToleranceNs := 100
-	h := HandleWithMiddleware(NewRouter(),
-		[]Middleware{RecordStartTime(),
-			AddViolations(testViolations),
-			LogRequestDuration(slowRequestToleranceNs)})
-	start := time.Now()
-
-	req := httptest.NewRequest("GET", "/violations", nil)
-	recorder := httptest.NewRecorder()
-	h.ServeHTTP(recorder, req)
-	res := recorder.Result()
-
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.True(t, time.Since(start).Nanoseconds() > int64(slowRequestToleranceNs))
-}
-
-func TestAddViolationsMiddlewareSkipsInvalidPenalties(t *testing.T) {
+func TestSetViolationPenaltiesSkipsInvalidPenalties(t *testing.T) {
 	testViolations := map[string]uint{
 		"": 20,
 		"TestViolation:2": 120,
 	}
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{AddViolations(testViolations)})
+	SetViolationPenalties(testViolations)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	req := httptest.NewRequest("GET", "/violations", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -88,28 +49,6 @@ func TestAddViolationsMiddlewareSkipsInvalidPenalties(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, "{}", string(body))
-}
-
-func TestDurationTrackingMiddlewareWithoutStatsd(t *testing.T) {
-	h := HandleWithMiddleware(NewRouter(), []Middleware{RecordStartTime(), LogRequestDuration(1e7)})
-	req := httptest.NewRequest("GET", "/__version__", nil)
-	recorder := httptest.NewRecorder()
-	h.ServeHTTP(recorder, req)
-	res := recorder.Result()
-
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-}
-
-func TestDurationTrackingMiddlewareWithoutStatsdAndStartTime(t *testing.T) {
-	// should never be configured this way, but also shouldn't explode
-
-	h := HandleWithMiddleware(NewRouter(), []Middleware{LogRequestDuration(1e7)})
-	req := httptest.NewRequest("GET", "/__version__", nil)
-	recorder := httptest.NewRecorder()
-	h.ServeHTTP(recorder, req)
-	res := recorder.Result()
-
-	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
 func TestSetResponseHeadersMiddleware(t *testing.T) {
