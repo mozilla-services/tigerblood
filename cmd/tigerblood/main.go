@@ -90,6 +90,18 @@ func loadDB() *tigerblood.DB {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
 	db.SetMaxOpenConns(viper.GetInt("DATABASE_MAX_OPEN_CONNS"))
+	db.SetMaxIdleConns(viper.GetInt("DATABASE_MAX_IDLE_CONNS"))
+
+	if viper.GetString("DATABASE_MAXLIFETIME") == "0" {
+		db.SetConnMaxLifetime(time.Duration(0))
+	} else {
+		lifetime, err := time.ParseDuration(viper.GetString("DATABASE_CONN_MAXLIFETIME"))
+		if err != nil {
+			db.SetConnMaxLifetime(lifetime)
+		} else {
+			log.Warnf("Error parsing conn db max lifetime: %s", err)
+		}
+	}
 	return db
 }
 
