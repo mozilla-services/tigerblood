@@ -25,7 +25,7 @@ func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 	if db == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		return
 	}
 
@@ -64,7 +64,7 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 // Returns a list of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
 	if violationPenalties == nil || violationPenaltiesJson == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
+		log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -124,7 +124,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if violationPenalties == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingViolations}).Warnf(DescribeErrno(RequestContextMissingViolations))
+		log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -139,7 +139,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if db == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -187,7 +187,7 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if db == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -254,7 +254,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if db == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -288,7 +288,7 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if db == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -318,7 +318,7 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if db == nil {
-		log.WithFields(log.Fields{"errno": RequestContextMissingDB}).Warnf(DescribeErrno(RequestContextMissingDB))
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
