@@ -87,6 +87,21 @@ func TestCreateEntry(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, recorder.Code)
 }
 
+func TestCreateEntryInvalidJson(t *testing.T) {
+	recorder := httptest.ResponseRecorder{}
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	db.emptyReputationTable()
+
+	SetDB(db)
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1`)))
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Nil(t, err)
+}
+
 func TestCreateEntryInvalidIP(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
 	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
