@@ -176,7 +176,7 @@ func main() {
 
 	tigerblood.SetViolationPenalties(loadViolationPenalties())
 
-	middleware = append(middleware, tigerblood.SetResponseHeaders())
+	middleware = append(middleware, tigerblood.SetResponseHeaders)
 
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err := http.ListenAndServe(

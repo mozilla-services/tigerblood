@@ -52,7 +52,7 @@ func TestSetViolationPenaltiesSkipsInvalidPenalties(t *testing.T) {
 }
 
 func TestSetResponseHeadersMiddleware(t *testing.T) {
-	h := HandleWithMiddleware(NewRouter(), []Middleware{SetResponseHeaders()})
+	h := HandleWithMiddleware(NewRouter(), []Middleware{SetResponseHeaders})
 	req := httptest.NewRequest("GET", "/__version__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)

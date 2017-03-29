@@ -30,13 +30,11 @@ var DefaultResponseHeaders = []ResponseHeader{
 	ResponseHeader{"X-Content-Type-Options", "nosniff"},
 }
 
-func SetResponseHeaders() Middleware {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			for _, header := range DefaultResponseHeaders {
-				w.Header().Add(header.Field, header.Value)
-			}
-			h.ServeHTTP(w, r)
-		})
-	}
+func SetResponseHeaders(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, header := range DefaultResponseHeaders {
+			w.Header().Add(header.Field, header.Value)
+		}
+		h.ServeHTTP(w, r)
+	})
 }
