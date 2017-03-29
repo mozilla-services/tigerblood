@@ -91,10 +91,10 @@ func TestInsertReputationByViolation(t *testing.T) {
 		// test parsing invalid URL
 		recorder := httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code) // matches list violations
 		recorder = httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations////", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
+		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // redirect
 	})
 }
 

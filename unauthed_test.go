@@ -77,5 +77,5 @@ func TestDebugRoutesWhenProfileHandlersDisabled(t *testing.T) {
 	h.ServeHTTP(recorder, req)
 	res := recorder.Result()
 
-	assert.Equal(t, http.StatusMovedPermanently, res.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 }
