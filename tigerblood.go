@@ -12,6 +12,7 @@ var statsdClient *statsd.Client = nil
 var violationPenalties map[string]uint = nil
 var violationPenaltiesJson []byte = nil
 var useProfileHandlers = false
+var hawkData *HawkData = nil
 
 func init() {
 	mozlogrus.Enable("tigerblood")
@@ -50,4 +51,8 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
 	}
 	violationPenaltiesJson = json
+}
+
+func SetHawkCreds(credentials map[string]string) {
+	hawkData = NewHawkData(credentials)
 }
