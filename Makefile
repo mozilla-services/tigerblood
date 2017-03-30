@@ -19,6 +19,16 @@ rm-db:
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
 
+torch-cpu:
+	go-torch --seconds 30 http://127.0.0.1:8080/debug/pprof/profile && open torch.svg
+
+mem-objs:
+	go tool pprof --alloc_objects http://127.0.0.1:8080/debug/pprof/heap
+
+build-gc-opts:  # log gc optimizations like inlined funcs
+	rm -f gc-build.out
+	go build -v -gcflags=-m &> gc-build.out
+
 coverage:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test -coverprofile=coverage.txt -covermode=atomic
 	sed "s|_$$(pwd)/|./|g" coverage.txt > rel-coverage.txt
