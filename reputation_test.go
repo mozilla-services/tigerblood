@@ -18,8 +18,9 @@ func TestReadReputationInvalidIP(t *testing.T) {
 	err = db.CreateTables()
 	assert.Nil(t, err)
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 }
@@ -36,8 +37,9 @@ func TestReadReputationValidIP(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil))
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
@@ -57,8 +59,9 @@ func TestReadReputationNoEntry(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.Nil(t, err)
@@ -72,8 +75,9 @@ func TestCreateEntry(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusCreated, recorder.Code)
@@ -89,8 +93,9 @@ func TestCreateEntry(t *testing.T) {
 
 func TestCreateEntryNoDB(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
+	SetHawkCreds(nil)
 	SetDB(nil)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -104,8 +109,9 @@ func TestCreateEntryInvalidJson(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
@@ -119,8 +125,9 @@ func TestCreateEntryInvalidIP(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1 -- SELECT(2)", "reputation": 200}`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
@@ -134,8 +141,9 @@ func TestCreateEntryInvalidReputation(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 200}`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
@@ -149,8 +157,9 @@ func TestUpdateEntry(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
@@ -171,8 +180,9 @@ func TestUpdateEntryInvalidJson(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": `)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 }
@@ -181,7 +191,7 @@ func TestUpdateEntryNoDB(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
 
 	SetDB(nil)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 }
@@ -194,8 +204,9 @@ func TestDeleteEntry(t *testing.T) {
 	assert.Nil(t, err)
 	db.emptyReputationTable()
 
+	SetHawkCreds(nil)
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	recorder = httptest.ResponseRecorder{}
 	h.ServeHTTP(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil))
@@ -208,8 +219,9 @@ func TestDeleteEntry(t *testing.T) {
 func TestDeleteEntryNoDB(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 
+	SetHawkCreds(nil)
 	SetDB(nil)
 	h.ServeHTTP(&recorder, httptest.NewRequest("DELETE", "/192.168.0.1", nil))
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)

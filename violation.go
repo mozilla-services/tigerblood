@@ -15,6 +15,12 @@ func init() {
 
 // Returns a list of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
+	SetResponseHeaders(w)
+
+	if RequireHawkAuth(w, req) != nil {
+		return
+	}
+
 	if req.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -43,22 +49,28 @@ func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
 // given in reputation violation.  The HTTP requests path has to
 // contain the IP to be updated, in CIDR notation. For example:
 // {"Violation": "password-reset-rate-limit-exceeded"}
-func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PUT" {
+func UpsertReputationByViolationHandler(w http.ResponseWriter, req *http.Request) {
+	SetResponseHeaders(w)
+
+	if RequireHawkAuth(w, req) != nil {
+		return
+	}
+
+	if req.Method != "PUT" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	splitPath := strings.Split(r.URL.Path, "/")
+	splitPath := strings.Split(req.URL.Path, "/")
 	if len(splitPath) != 3 {
-		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), r.URL.Path)
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), req.URL.Path)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	ip, err := IPAddressFromHTTPPath("/" + splitPath[2])
 
 	if err != nil {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), req.URL.Path, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -69,7 +81,7 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
 		w.WriteHeader(http.StatusInternalServerError)

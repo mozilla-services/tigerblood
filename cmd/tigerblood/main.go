@@ -158,11 +158,8 @@ func main() {
 	loadConfig()
 	printConfig()
 
-	var middleware []tigerblood.Middleware
-
 	if viper.GetBool("HAWK") {
 		tigerblood.SetHawkCreds(loadCredentials())
-		middleware = append(middleware, tigerblood.RequireHawkAuth)
 	}
 
 	tigerblood.SetProfileHandlers(viper.GetBool("PROFILE"))
@@ -177,11 +174,7 @@ func main() {
 
 	tigerblood.SetViolationPenalties(loadViolationPenalties())
 
-	middleware = append(middleware, tigerblood.SetResponseHeaders)
-
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
-	err := http.ListenAndServe(
-		viper.GetString("BIND_ADDR"),
-		tigerblood.HandleWithMiddleware(tigerblood.NewRouter(), middleware))
+	err := http.ListenAndServe(viper.GetString("BIND_ADDR"), tigerblood.NewRouter())
 	log.Fatal(err)
 }

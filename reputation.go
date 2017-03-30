@@ -14,6 +14,12 @@ func init() {
 }
 
 func ReputationHandler(w http.ResponseWriter, req *http.Request) {
+	SetResponseHeaders(w)
+
+	if RequireHawkAuth(w, req) != nil {
+		return
+	}
+
 	switch req.Method {
 	case "GET":
 		ReadReputationHandler(w, req)

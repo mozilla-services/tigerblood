@@ -12,6 +12,9 @@ import (
 )
 
 var EchoHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	if RequireHawkAuth(w, r) != nil {
+		return
+	}
 	if r.Body != nil {
 		io.Copy(w, r.Body)
 	}
@@ -24,7 +27,7 @@ func TestMissingAuthorization(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := make(map[string]string)
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
@@ -36,7 +39,7 @@ func TestInvalidAuthorization(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := make(map[string]string)
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
@@ -59,7 +62,7 @@ func TestInvalidPayload(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"fxa": "foobar"}
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
@@ -83,7 +86,7 @@ func TestValidPayload(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"fxa": "foobar"}
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
@@ -108,7 +111,7 @@ func TestValidPayloadNoContentType(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"fxa": "foobar"}
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
@@ -121,7 +124,7 @@ func TestExpiration(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"fxa": "foobar"}
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
@@ -145,7 +148,7 @@ func TestReplayProtection(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"fxa": "foobar"}
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	recorder = httptest.NewRecorder()
@@ -170,7 +173,7 @@ func TestLoadbalancerEndpointsUnauthed(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		credentials := map[string]string{"fxa": "foobar"}
 		SetHawkCreds(credentials)
-		handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+		handler := EchoHandler
 		handler.ServeHTTP(recorder, req)
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	}
@@ -194,7 +197,7 @@ func TestMissingCredentialsReturns401(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"notFxa": "foobar"}
 	SetHawkCreds(credentials)
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth})
+	handler := EchoHandler
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }

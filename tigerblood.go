@@ -59,5 +59,9 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 }
 
 func SetHawkCreds(credentials map[string]string) {
-	hawkData = NewHawkData(credentials)
+	if credentials == nil {
+		hawkData = nil
+	} else {
+		hawkData = NewHawkData(credentials)
+	}
 }

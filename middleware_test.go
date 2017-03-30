@@ -34,9 +34,10 @@ func TestSetViolationPenaltiesSkipsInvalidPenalties(t *testing.T) {
 		"TestViolation:2": 120,
 	}
 
+	SetHawkCreds(nil)
 	SetViolationPenalties(testViolations)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/violations", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -52,7 +53,7 @@ func TestSetViolationPenaltiesSkipsInvalidPenalties(t *testing.T) {
 }
 
 func TestSetResponseHeadersMiddleware(t *testing.T) {
-	h := HandleWithMiddleware(NewRouter(), []Middleware{SetResponseHeaders})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/__version__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)

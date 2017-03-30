@@ -14,6 +14,8 @@ func init() {
 }
 
 func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
+	SetResponseHeaders(w)
+
 	if req.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -24,6 +26,8 @@ func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
+	SetResponseHeaders(w)
+
 	if req.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -44,6 +48,8 @@ func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func VersionHandler(w http.ResponseWriter, req *http.Request) {
+	SetResponseHeaders(w)
+
 	if req.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
