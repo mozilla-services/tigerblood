@@ -9,7 +9,7 @@ import (
 )
 
 func TestLoadBalancerHeartbeatHandler(t *testing.T) {
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/__lbheartbeat__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -25,7 +25,7 @@ func TestHeartbeatHandler(t *testing.T) {
 	assert.Nil(t, err)
 
 	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/__heartbeat__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -37,7 +37,7 @@ func TestHeartbeatHandler(t *testing.T) {
 func TestHeartbeatHandlerWithoutDB(t *testing.T) {
 	SetDB(nil)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/__heartbeat__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -47,7 +47,7 @@ func TestHeartbeatHandlerWithoutDB(t *testing.T) {
 }
 
 func TestVersionHandler(t *testing.T) {
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/__version__", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -59,7 +59,7 @@ func TestVersionHandler(t *testing.T) {
 func TestDebugRoutesWhenProfileHandlersEnabled(t *testing.T) {
 	SetProfileHandlers(true)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -71,11 +71,11 @@ func TestDebugRoutesWhenProfileHandlersEnabled(t *testing.T) {
 func TestDebugRoutesWhenProfileHandlersDisabled(t *testing.T) {
 	SetProfileHandlers(false)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
 	res := recorder.Result()
 
-	assert.Equal(t, http.StatusMovedPermanently, res.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 }

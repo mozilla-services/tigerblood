@@ -12,6 +12,7 @@ var statsdClient *statsd.Client = nil
 var violationPenalties map[string]uint = nil
 var violationPenaltiesJson []byte = nil
 var useProfileHandlers = false
+var hawkData *HawkData = nil
 
 func init() {
 	mozlogrus.Enable("tigerblood")
@@ -23,6 +24,11 @@ func SetDB(newDb *DB) {
 
 func SetProfileHandlers(profileHandlers bool) {
 	useProfileHandlers = profileHandlers
+
+	for route, _ := range UnauthedDebugRoutes {
+		UnauthedRoutes[route] = useProfileHandlers
+	}
+	log.Printf("Unauthed routes: %s", UnauthedRoutes)
 }
 
 func SetStatsdClient(newClient *statsd.Client) {
@@ -50,4 +56,12 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
 	}
 	violationPenaltiesJson = json
+}
+
+func SetHawkCreds(credentials map[string]string) {
+	if credentials == nil {
+		hawkData = nil
+	} else {
+		hawkData = NewHawkData(credentials)
+	}
 }

@@ -16,9 +16,10 @@ func TestListViolations(t *testing.T) {
 		"TestViolation:2": 20,
 	}
 
+	SetHawkCreds(nil)
 	SetViolationPenalties(testViolations)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/violations", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -34,9 +35,10 @@ func TestListViolations(t *testing.T) {
 }
 
 func TestListViolationsMissingViolationsMiddleware(t *testing.T) {
+	SetHawkCreds(nil)
 	SetViolationPenalties(nil)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 	req := httptest.NewRequest("GET", "/violations", nil)
 	recorder := httptest.NewRecorder()
 	h.ServeHTTP(recorder, req)
@@ -58,9 +60,10 @@ func TestInsertReputationByViolation(t *testing.T) {
 	}
 
 	SetDB(db)
+	SetHawkCreds(nil)
 	SetViolationPenalties(testViolations)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 
 	t.Run("known", func (t *testing.T) {
 		// known violation type is subtracted from default reputation
@@ -91,10 +94,10 @@ func TestInsertReputationByViolation(t *testing.T) {
 		// test parsing invalid URL
 		recorder := httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code) // matches list violations
 		recorder = httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations////", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
-		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
+		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // redirect
 	})
 }
 
@@ -103,10 +106,10 @@ func TestInsertReputationByViolationRequiresDB(t *testing.T) {
 		"TestViolation": 90,
 	}
 	SetViolationPenalties(testViolations)
-
+	SetHawkCreds(nil)
 	SetDB(nil)
 
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+	h := NewRouter()
 
 	recorder := httptest.ResponseRecorder{}
 	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "TestViolation"}`)))
