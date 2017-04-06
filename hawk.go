@@ -11,6 +11,7 @@ import (
 	"github.com/willf/bloom"
 	"io"
 	"io/ioutil"
+	"mime"
 	"sync"
 )
 
@@ -93,6 +94,13 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 				log.WithFields(log.Fields{"errno": HawkMissingContentType}).Warn("hawk: missing content-type")
 			}
 
+			mediaType, _, err := mime.ParseMediaType(contentType)
+			if err != nil && contentType != "" {
+				log.WithFields(log.Fields{"errno": HawkMissingContentType}).Warnf("hawk: invalid content-type %s", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
 			buf, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				log.WithFields(log.Fields{"errno": HawkReadBodyError}).Warnf("hawk: error reading body %s", err)
@@ -101,7 +109,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 			}
 
 			r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-			hash := auth.PayloadHash(contentType)
+			hash := auth.PayloadHash(mediaType)
 			io.Copy(hash, ioutil.NopCloser(bytes.NewBuffer(buf)))
 			if !auth.ValidHash(hash) {
 				log.WithFields(log.Fields{"errno": HawkInvalidBodyHash}).Warnf("hawk: invalid payload hash")

@@ -64,7 +64,7 @@ func TestInvalidPayload(t *testing.T) {
 func TestValidPayload(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json;charset=utf-8")
 	auth := hawk.NewRequestAuth(req,
 		&hawk.Credentials{
 			ID:   "fxa",
