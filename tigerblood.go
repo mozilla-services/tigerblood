@@ -23,6 +23,11 @@ func SetDB(newDb *DB) {
 
 func SetProfileHandlers(profileHandlers bool) {
 	useProfileHandlers = profileHandlers
+
+	for route, _ := range UnauthedDebugRoutes {
+		UnauthedRoutes[route] = useProfileHandlers
+	}
+	log.Printf("Unauthed routes: %s", UnauthedRoutes)
 }
 
 func SetStatsdClient(newClient *statsd.Client) {
