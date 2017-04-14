@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
+	"runtime"
 )
 
 var db *DB = nil
@@ -23,6 +24,17 @@ func SetDB(newDb *DB) {
 
 func SetProfileHandlers(profileHandlers bool) {
 	useProfileHandlers = profileHandlers
+
+	for route, _ := range UnauthedDebugRoutes {
+		UnauthedRoutes[route] = useProfileHandlers
+	}
+	log.Printf("Unauthed routes: %s", UnauthedRoutes)
+
+	if profileHandlers {
+		runtime.SetMutexProfileFraction(5)
+	} else {
+		runtime.SetMutexProfileFraction(0)
+	}
 }
 
 func SetStatsdClient(newClient *statsd.Client) {
