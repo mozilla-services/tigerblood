@@ -13,6 +13,7 @@ func AttachProfiler(router *mux.Router) {
 	router.HandleFunc("/debug/pprof/mutex", pprof.Index)
 	router.HandleFunc("/debug/pprof/heap", pprof.Index)
 	router.HandleFunc("/debug/pprof/block", pprof.Index)
+	router.HandleFunc("/debug/pprof/threadcreate", pprof.Index)
 	router.HandleFunc("/debug/pprof/goroutine", pprof.Index)
 	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -65,6 +66,7 @@ var UnauthedDebugRoutes = map[string]bool{
 	"/debug/pprof/mutex": true,
 	"/debug/pprof/block": true,
 	"/debug/pprof/goroutine": true,
+	"/debug/pprof/threadcreate": true,
 }
 
 var routes = Routes{

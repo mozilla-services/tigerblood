@@ -47,6 +47,7 @@ def install_locust():
     sudo("rm -Rf /tmp/*")
     sudo("apt-get -qq update -y")
     sudo("apt-get -q install tmux gcc python-dev python-zmq python-pip -y")
+    run("ulimit -n 65535")
     run("pip install locustio requests_hawk --user")
     put('locustfile.py', 'locustfile.py')
 

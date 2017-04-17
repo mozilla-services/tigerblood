@@ -32,8 +32,10 @@ func SetProfileHandlers(profileHandlers bool) {
 
 	if profileHandlers {
 		runtime.SetMutexProfileFraction(5)
+		runtime.SetBlockProfileRate(1)
 	} else {
 		runtime.SetMutexProfileFraction(0)
+		runtime.SetBlockProfileRate(0)
 	}
 }
 
