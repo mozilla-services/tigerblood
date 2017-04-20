@@ -120,32 +120,6 @@ func TestExpiration(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
-func TestReplayProtection(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
-	assert.Nil(t, err)
-	req.Header.Set("Content-Type", "application/json")
-	auth := hawk.NewRequestAuth(req,
-		&hawk.Credentials{
-			ID:   "fxa",
-			Key:  "foobar",
-			Hash: sha256.New,
-		},
-		0,
-	)
-	hash := auth.PayloadHash("application/json")
-	hash.Write([]byte("foo"))
-	auth.SetHash(hash)
-	req.Header.Set("Authorization", auth.RequestHeader())
-	recorder := httptest.NewRecorder()
-	credentials := map[string]string{"fxa": "foobar"}
-	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireHawkAuth(credentials)})
-	handler.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code)
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
-}
-
 func TestLoadbalancerEndpointsUnauthed(t *testing.T) {
 	SetProfileHandlers(true)
 
