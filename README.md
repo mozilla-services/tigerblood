@@ -218,3 +218,37 @@ than the current reputation.
 * Successful response status code: 204 No Content
 
 Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+#### PUT /violations/
+
+Sets or updates the reputations for multiple IP addresses or networks
+with provided violation types i.e. `PUT /violations/{ip}` for each IP.
+If updating the reputation for any single IP fails the entire request
+fails, the database is not updated for any of the ips, and any error
+response is for the first failing IP.
+
+* Request parameters: None
+* Request body: a JSON object with the schema:
+
+```json
+[{
+  "type": "object",
+  "properties": {
+    "Violation": {
+      "type": "string"
+    },
+    "ip": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "Violation",
+	"ip"
+  ]
+}]
+```
+
+* Response body: None
+* Successful response status code: 204 No Content
+
+Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
