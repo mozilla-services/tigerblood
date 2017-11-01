@@ -13,6 +13,7 @@ var statsdClient *statsd.Client = nil
 var violationPenalties map[string]uint = nil
 var violationPenaltiesJson []byte = nil
 var useProfileHandlers = false
+var maxEntries = int(100)
 
 func init() {
 	mozlogrus.Enable("tigerblood")
@@ -64,4 +65,12 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
 	}
 	violationPenaltiesJson = json
+}
+
+func SetMaxEntries(newMaxEntries int) {
+	if newMaxEntries < 0 {
+		log.Fatal("MAX_ENTRIES must be positive")
+	}
+	log.Debugf("Setting max entries: %s", newMaxEntries)
+	maxEntries = newMaxEntries
 }

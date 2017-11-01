@@ -62,6 +62,7 @@ func loadConfig() {
 	viper.SetDefault("RUNTIME_MEM", true)
 	viper.SetDefault("RUNTIME_GC", true)
 	viper.SetDefault("PROFILE", false)
+	viper.SetDefault("MAX_ENTRIES", 1000)
 
 	viper.SetEnvPrefix("tigerblood")
 	viper.AutomaticEnv()
@@ -175,6 +176,7 @@ func main() {
 	}
 
 	tigerblood.SetViolationPenalties(loadViolationPenalties())
+	tigerblood.SetMaxEntries(viper.GetInt("MAX_ENTRIES"))
 
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
 

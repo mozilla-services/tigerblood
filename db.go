@@ -45,6 +45,11 @@ type ReputationEntry struct {
 	Reputation uint
 }
 
+type IpViolationEntry struct {
+	Ip        string
+	Violation string
+}
+
 func checkConnection(db *DB) {
 	for {
 		var one uint

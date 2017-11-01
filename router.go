@@ -95,6 +95,12 @@ var routes = Routes{
 		ListViolationsHandler,
 	},
 	Route{
+		"MultiUpsertReputationByViolation",
+		"PUT",
+		"/violations/",
+		MultiUpsertReputationByViolationHandler,
+	},
+	Route{
 		"UpsertReputationByViolation",
 		"PUT",
 		"/violations/{type:[[:punct:]\\w]{1,255}}",  // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)

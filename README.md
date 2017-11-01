@@ -49,6 +49,7 @@ The following configuration options are available:
 | RUNTIME\_CPU               | Send `cpu.goroutines` and `cpu.cgo_calls` when runtime stats are enabled.                | true              |
 | RUNTIME\_MEM               | Send top level `mem`, `mem.heap`, and `mem.stack` stats when runtime stats are enabled.  | true              |
 | RUNTIME\_GC                | Send `mem.gc` stats when runtime stats are enabled.                                      | true              |
+| MAX_ENTRIES                | Maximum number of entries for multi entry endpoints to accept                            | 1000              |
 
 For environment variables, the configuration options must be prefixed with "TIGERBLOOD\_", for example, the environment variable to configure the DSN is TIGERBLOOD\_DSN.
 
@@ -223,9 +224,14 @@ Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT
 
 Sets or updates the reputations for multiple IP addresses or networks
 with provided violation types i.e. `PUT /violations/{ip}` for each IP.
-If updating the reputation for any single IP fails the entire request
-fails, the database is not updated for any of the ips, and any error
-response is for the first failing IP.
+
+Accepts duplicates of an IP.
+
+In the event of an invalid or failed entry, returns the failing entry
+and index with the error response body below and does not roll back
+the accepted entries (i.e. doesn't run in a transaction).
+
+Max entries can be configured with the TIGERBLOOD_MAX_ENTRIES env var.
 
 * Request parameters: None
 * Request body: a JSON object with the schema:
@@ -251,4 +257,38 @@ response is for the first failing IP.
 * Response body: None
 * Successful response status code: 204 No Content
 
+* Error Response body:
+
+```
+{
+  "type": "object",
+  "properties": {
+    "Errno": {
+      "type": "int"
+    },
+    "EntryIndex": {
+      "type": "int"
+    },
+    "Entry": {
+      "type": "object",
+      "properties": {
+         "Violation": {
+           "type": "string"
+         },
+         "Ip": {
+           "type": "string"
+         }
+      }
+	},
+	"Msg": {
+      "type": "string"
+	}
+  }
+}
+```
+
+* Error response status code: 400 Bad Request
+
 Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+Example error response: `"{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"Ip\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}"`

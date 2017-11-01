@@ -33,11 +33,13 @@ const (
 	InvalidIPError = 40
 	InvalidReputationError = iota
 	InvalidViolationTypeError = iota
+	TooManyIpViolationEntriesError = iota
 
 	// missing parameter errors usually result in a 400 error
 	MissingIPError = 50
 	MissingReputationError = iota
 	MissingViolationTypeError = iota
+	MissingIPViolationEntryError = iota
 
 	// IO/DB errors
 	DBError = 60
@@ -49,6 +51,10 @@ const (
 // Returns a format string for the errno
 // not implemented for all errnos
 func DescribeErrno(errno Errno) string {
+	if errno == TooManyIpViolationEntriesError { // was seeing a compile error with this in the switch
+		return "Too many IP, violation objects in request body."
+	}
+
 	switch errno {
 
 	case BodyReadError:
@@ -71,6 +77,8 @@ func DescribeErrno(errno Errno) string {
 		return "Error finding reputation parameter in %s: %s"
 	case MissingViolationTypeError:
 		return "Error finding violation type in %s: %s"
+	case MissingIPViolationEntryError:
+		return "Error finding an IP and violation type object in request body."
 
 	case MissingDB:
 		return "Could not find database."
