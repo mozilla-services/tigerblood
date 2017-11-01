@@ -62,7 +62,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 				return
 			}
 
-			// Validate the header MAC an skew
+			// Validate the header MAC and skew
 			validationError := auth.Valid()
 			if validationError != nil {
 				log.WithFields(log.Fields{"errno": HawkValidationError}).Warnf("hawk validation error: %s", validationError)
