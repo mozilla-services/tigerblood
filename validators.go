@@ -37,7 +37,7 @@ func IsValidViolationPenalty(penalty uint64) bool {
 	return penalty >= 0 && penalty <= 100
 }
 
-var violationRegex = regexp.MustCompile(`[:\w]{1,255}`)
+var violationRegex = regexp.MustCompile(`^[:\w]{1,255}$`)
 
 // IsValidViolationName checks if a violation name matches [:\w]{1,255}
 func IsValidViolationName(name string) bool {
@@ -51,6 +51,16 @@ func IsValidReputationEntry(entry ReputationEntry) bool {
 
 // ValidateIPViolationEntryAndGetPenalty validates violation type and returns violation penalty and Errno or 0 for no error
 func ValidateIPViolationEntryAndGetPenalty(entry IPViolationEntry) (uint, Errno) {
+	if len(entry.IP) < 1 {
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), entry.IP, "")
+		return 0, MissingIPError
+	}
+
+	if !IsValidReputationCIDROrIP(entry.IP) {
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), entry.IP)
+		return 0, InvalidIPError
+	}
+
 	if !IsValidViolationName(entry.Violation) {
 		log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof(DescribeErrno(InvalidViolationTypeError), entry.Violation)
 		return 0, InvalidViolationTypeError

@@ -228,10 +228,14 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		penalty, errno := ValidateIPViolationEntryAndGetPenalty(entry)
 		if errno > 0 {
 			switch errno {
+			case MissingIPError:
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, fmt.Sprintf(DescribeErrno(MissingIPError), entry.IP, err))
 			case MissingViolations:
 				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, DescribeErrno(MissingViolations))
 			case MissingViolationTypeError:
 				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string("Violation type not found"))
+			case InvalidIPError:
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, fmt.Sprintf(DescribeErrno(InvalidIPError), entry.IP))
 			case InvalidViolationTypeError:
 				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string("Invalid violation type provided"))
 			default:

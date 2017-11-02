@@ -155,6 +155,20 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
+	t.Run("known violation missing ip", func(t *testing.T) {
+		// known violation type is subtracted from default reputation
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "", "Violation": "Test:Violation"}]`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("known violation invalid ip", func(t *testing.T) {
+		// known violation type is subtracted from default reputation
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192...168.0.1", "Violation": "Test:Violation"}]`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
 	t.Run("known violation single ip", func(t *testing.T) {
 		// known violation type is subtracted from default reputation
 		recorder := httptest.ResponseRecorder{}
@@ -218,6 +232,14 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		// invalid violation type returns 400
 		recorder := httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "InvalidViolation!"}]`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("requires violation penalties", func(t *testing.T) {
+		SetViolationPenalties(nil)
+
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
 }
