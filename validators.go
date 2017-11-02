@@ -37,7 +37,7 @@ func IsValidViolationPenalty(penalty uint64) bool {
 	return penalty >= 0 && penalty <= 100
 }
 
-var violationRegex = regexp.MustCompile(`^[:\w]{1,255}$`)
+var violationRegex = regexp.MustCompile(`^[:\.\w]{1,255}$`)
 
 // IsValidViolationName checks if a violation name matches [:\w]{1,255}
 func IsValidViolationName(name string) bool {

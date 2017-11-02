@@ -55,6 +55,7 @@ func TestInsertReputationByViolation(t *testing.T) {
 
 	testViolations := map[string]uint{
 		"Test:Violation": 90,
+		"Test:Violation.name": 90,
 	}
 
 	SetDB(db)
@@ -66,7 +67,7 @@ func TestInsertReputationByViolation(t *testing.T) {
 	t.Run("known", func(t *testing.T) {
 		// known violation type is subtracted from default reputation
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "Test:Violation"}`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1", strings.NewReader(`{"Violation": "Test:Violation.name"}`)))
 		assert.Equal(t, http.StatusNoContent, recorder.Code)
 
 		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
