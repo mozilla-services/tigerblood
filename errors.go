@@ -52,7 +52,7 @@ const (
 // not implemented for all errnos
 func DescribeErrno(errno Errno) string {
 	if errno == TooManyIpViolationEntriesError { // was seeing a compile error with this in the switch
-		return "Too many IP, violation objects in request body."
+		return "Too many IP, violation objects in request body"
 	}
 
 	switch errno {
@@ -78,14 +78,14 @@ func DescribeErrno(errno Errno) string {
 	case MissingViolationTypeError:
 		return "Error finding violation type in %s: %s"
 	case MissingIPViolationEntryError:
-		return "Error finding an IP and violation type object in request body."
+		return "Error finding an IP and violation type object in request body"
 
 	case MissingDB:
-		return "Could not find database."
+		return "Could not find database"
 	case MissingViolations:
-		return "Could not find violation penalties."
+		return "Could not find violation penalties"
 	case MissingStatsdClient:
-		return "Could not find statsdClient."
+		return "Could not find statsdClient"
 
 	case CWDNotFound:
 		return "Error getting CWD: %s"
