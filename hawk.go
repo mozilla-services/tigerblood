@@ -1,18 +1,19 @@
 package tigerblood
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
-	"go.mozilla.org/hawk"
-	"net/http"
-	"time"
 	"bytes"
 	"crypto/sha256"
+	log "github.com/sirupsen/logrus"
+	"go.mozilla.org/hawk"
+	"go.mozilla.org/mozlogrus"
 	"io"
 	"io/ioutil"
 	"mime"
+	"net/http"
+	"time"
 )
 
+// HawkData is hawk config data (.credentials is a map of Hawk IDs to passwords)
 type HawkData struct {
 	credentials map[string]string
 }
@@ -21,12 +22,14 @@ func init() {
 	mozlogrus.Enable("tigerblood")
 }
 
+// NewHawkData returns hawk config data for a map of hawk creds
 func NewHawkData(secrets map[string]string) *HawkData {
 	return &HawkData{
-		credentials:   secrets,
+		credentials: secrets,
 	}
 }
 
+// RequireHawkAuth middleware for checking a hawk auth header
 func RequireHawkAuth(credentials map[string]string) Middleware {
 	m := NewHawkData(credentials)
 
@@ -46,15 +49,16 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 				case hawk.AuthFormatError:
 					log.WithFields(log.Fields{"errno": HawkAuthFormatError}).Warn(err)
 				case *hawk.CredentialError:
-				 	log.WithFields(log.Fields{"errno": HawkCredError}).Warn(err)
-				case hawk.AuthError: {
-					switch err.(hawk.AuthError) {
-					case hawk.ErrNoAuth:
-						log.WithFields(log.Fields{"errno": HawkErrNoAuth}).Warn(err)
-					case hawk.ErrReplay:
-						log.WithFields(log.Fields{"errno": HawkReplayError}).Warn(err)
+					log.WithFields(log.Fields{"errno": HawkCredError}).Warn(err)
+				case hawk.AuthError:
+					{
+						switch err.(hawk.AuthError) {
+						case hawk.ErrNoAuth:
+							log.WithFields(log.Fields{"errno": HawkErrNoAuth}).Warn(err)
+						case hawk.ErrReplay:
+							log.WithFields(log.Fields{"errno": HawkReplayError}).Warn(err)
+						}
 					}
-				}
 				default:
 					log.WithFields(log.Fields{"errno": HawkOtherAuthError}).Warnf("other hawk auth error: %s", err)
 				}
@@ -62,7 +66,7 @@ func RequireHawkAuth(credentials map[string]string) Middleware {
 				return
 			}
 
-			// Validate the header MAC an skew
+			// Validate the header MAC and skew
 			validationError := auth.Valid()
 			if validationError != nil {
 				log.WithFields(log.Fields{"errno": HawkValidationError}).Warnf("hawk validation error: %s", validationError)

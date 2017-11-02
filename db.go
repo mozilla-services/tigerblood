@@ -1,11 +1,12 @@
 package tigerblood
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
+	"go.mozilla.org/mozlogrus"
+	"strings"
 	"time"
 )
 
@@ -13,6 +14,7 @@ func init() {
 	mozlogrus.Enable("tigerblood")
 }
 
+// CheckViolationError postgres violation error
 type CheckViolationError struct {
 	Inner *pq.Error
 }
@@ -21,6 +23,7 @@ func (e CheckViolationError) Error() string {
 	return e.Inner.Error()
 }
 
+// DuplicateKeyError postgres duplicate key error
 type DuplicateKeyError struct {
 	Inner *pq.Error
 }
@@ -32,6 +35,7 @@ func (e DuplicateKeyError) Error() string {
 const pgDuplicateKeyErrorCode = "23505"
 const pgCheckViolationErrorCode = "23514"
 
+// ErrNoRowsAffected error to detect when an update doesn't occur
 var ErrNoRowsAffected = fmt.Errorf("No rows affected")
 
 // DB is a DB instance for running queries against the tigerblood database
@@ -40,9 +44,16 @@ type DB struct {
 	reputationSelectStmt *sql.Stmt
 }
 
+// ReputationEntry an (IP, Reputation) entry
 type ReputationEntry struct {
 	IP         string
 	Reputation uint
+}
+
+// IPViolationEntry an (IP, Violation) where Violation is the violation type name
+type IPViolationEntry struct {
+	IP        string
+	Violation string
 }
 
 func checkConnection(db *DB) {
@@ -131,7 +142,6 @@ func (db DB) EmptyTables() error {
 	return nil
 }
 
-
 func (db DB) createReputationTable() error {
 	_, err := db.Query(createReputationTableSQL)
 	return err
@@ -152,18 +162,31 @@ func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) er
 	return err
 }
 
-// InsertOrUpdateReputationPenalty applies a reputationPenalty to the
+// InsertOrUpdateReputationPenalties applies a reputationPenalty to the
 // default reputation (100) and inserts a reputationEntry or updates
 // an reputationEntry with the penalty
-func (db DB) InsertOrUpdateReputationPenalty(tx *sql.Tx, ip string, reputationPenalty uint) error {
+func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string, reputationPenalties []uint) error {
 	exec := db.Exec
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, 100 - $2) ON CONFLICT (ip) DO UPDATE SET reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - $2));", ip, reputationPenalty)
+
+	sqlStr := "INSERT INTO reputation (ip, reputation) VALUES "
+	vals := []interface{}{}
+
+	for i, ip := range ips {
+		penalty := reputationPenalties[i]
+		sqlStr += fmt.Sprintf("($%d, 100 - $%d),", (i*2)+1, (i*2)+2)
+		vals = append(vals, ip, penalty)
+	}
+
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	sqlStr += " ON CONFLICT (ip) DO UPDATE SET reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - (100 - excluded.reputation)));"
+
+	log.Debugf("sql: %s %s", sqlStr, vals)
+	_, err := exec(sqlStr, vals...)
 	return err
 }
-
 
 // InsertReputationEntry inserts a single ReputationEntry into the database
 func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {

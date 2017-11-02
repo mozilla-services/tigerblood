@@ -49,6 +49,7 @@ The following configuration options are available:
 | RUNTIME\_CPU               | Send `cpu.goroutines` and `cpu.cgo_calls` when runtime stats are enabled.                | true              |
 | RUNTIME\_MEM               | Send top level `mem`, `mem.heap`, and `mem.stack` stats when runtime stats are enabled.  | true              |
 | RUNTIME\_GC                | Send `mem.gc` stats when runtime stats are enabled.                                      | true              |
+| MAX_ENTRIES                | Maximum number of entries for multi entry endpoints to accept                            | 1000              |
 
 For environment variables, the configuration options must be prefixed with "TIGERBLOOD\_", for example, the environment variable to configure the DSN is TIGERBLOOD\_DSN.
 
@@ -218,3 +219,81 @@ than the current reputation.
 * Successful response status code: 204 No Content
 
 Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+#### PUT /violations/
+
+Sets or updates the reputations for multiple IP addresses or networks
+with provided violation types like `PUT /violations/{ip}` for each IP.
+
+Returns 409 Conflict for requests with duplicate IPs.
+
+In the event of an invalid or failed entry, returns the failing entry
+and index with the error response body below and rolls back
+the accepted entries to retry (i.e. everything runs as one SQL statement).
+
+Max entries can be configured with the `TIGERBLOOD_MAX_ENTRIES` env var,
+which default to 1000.
+
+* Request parameters: None
+* Request body:
+
+A JSON object with the schema (example below):
+
+```json
+[{
+  "type": "object",
+  "properties": {
+    "Violation": {
+      "type": "string"
+    },
+    "ip": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "Violation",
+	"ip"
+  ]
+}]
+```
+
+* Response body: None
+* Successful response status code: 204 No Content
+
+* Error Response body:
+
+A JSON object with the schema (example below):
+
+```
+{
+  "type": "object",
+  "properties": {
+    "Errno": {
+      "type": "int"
+    },
+    "EntryIndex": {
+      "type": "int"
+    },
+    "Entry": {
+      "type": "object",
+      "properties": {
+         "Violation": {
+           "type": "string"
+         },
+         "IP": {
+           "type": "string"
+         }
+      }
+	},
+	"Msg": {
+      "type": "string"
+	}
+  }
+}
+```
+
+* Error response status code: 400 Bad Request
+
+Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
+
+Example error response: `{\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"Unknown\"},\"Msg\":\"Violation type not found\"}`

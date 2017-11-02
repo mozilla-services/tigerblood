@@ -6,8 +6,7 @@ import (
 	"net/http/pprof"
 )
 
-
-func AttachProfiler(router *mux.Router) {
+func attachProfiler(router *mux.Router) {
 	// Register pprof handlers
 	router.HandleFunc("/debug/pprof/", pprof.Index)
 	router.HandleFunc("/debug/pprof/mutex", pprof.Index)
@@ -20,11 +19,12 @@ func AttachProfiler(router *mux.Router) {
 	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 }
 
+// NewRouter returns a new gorilla/mux router
 func NewRouter() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 
 	if useProfileHandlers {
-		AttachProfiler(router)
+		attachProfiler(router)
 	}
 
 	for _, route := range routes {
@@ -42,30 +42,34 @@ func NewRouter() *mux.Router {
 	return router
 }
 
+// Route a struct for holding a route config
 type Route struct {
-	Name         string
-	Method       string
-	Pattern      string
-	HandlerFunc  http.HandlerFunc
+	Name        string
+	Method      string
+	Pattern     string
+	HandlerFunc http.HandlerFunc
 }
 
+// Routes an array of Routes for configuring a Router
 type Routes []Route
 
+// UnauthedRoutes routes that don't require hawk auth
 var UnauthedRoutes = map[string]bool{
 	"/__lbheartbeat__": true,
-	"/__heartbeat__": true,
-	"/__version__": true,
+	"/__heartbeat__":   true,
+	"/__version__":     true,
 }
 
+// UnauthedDebugRoutes profiling routes that don't require hawk auth
 var UnauthedDebugRoutes = map[string]bool{
-	"/debug/pprof/": true,
-	"/debug/pprof/cmdline": true,
-	"/debug/pprof/profile": true,
-	"/debug/pprof/symbol": true,
-	"/debug/pprof/heap": true,
-	"/debug/pprof/mutex": true,
-	"/debug/pprof/block": true,
-	"/debug/pprof/goroutine": true,
+	"/debug/pprof/":             true,
+	"/debug/pprof/cmdline":      true,
+	"/debug/pprof/profile":      true,
+	"/debug/pprof/symbol":       true,
+	"/debug/pprof/heap":         true,
+	"/debug/pprof/mutex":        true,
+	"/debug/pprof/block":        true,
+	"/debug/pprof/goroutine":    true,
 	"/debug/pprof/threadcreate": true,
 }
 
@@ -95,9 +99,15 @@ var routes = Routes{
 		ListViolationsHandler,
 	},
 	Route{
+		"MultiUpsertReputationByViolation",
+		"PUT",
+		"/violations/",
+		MultiUpsertReputationByViolationHandler,
+	},
+	Route{
 		"UpsertReputationByViolation",
 		"PUT",
-		"/violations/{type:[[:punct:]\\w]{1,255}}",  // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
+		"/violations/{type:[[:punct:]\\w]{1,255}}", // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
 		UpsertReputationByViolationHandler,
 	},
 	Route{
