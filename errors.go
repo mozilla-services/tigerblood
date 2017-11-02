@@ -20,33 +20,32 @@ const (
 	HawkReadBodyError
 
 	// missing global errors usually result in warnings or 500 errors
-	MissingDB = 20
+	MissingDB           = 20
 	MissingStatsdClient = iota
-	MissingViolations = iota
+	MissingViolations   = iota
 
 	// encoding/decoding errors
-	BodyReadError = 30
-	JSONMarshalError = iota
+	BodyReadError      = 30
+	JSONMarshalError   = iota
 	JSONUnmarshalError = iota
 
 	// validation errors usually result in a 400 error
-	InvalidIPError = 40
-	InvalidReputationError = iota
-	InvalidViolationTypeError = iota
+	InvalidIPError                 = 40
+	InvalidReputationError         = iota
+	InvalidViolationTypeError      = iota
 	TooManyIpViolationEntriesError = iota
 
 	// missing parameter errors usually result in a 400 error
-	MissingIPError = 50
-	MissingReputationError = iota
-	MissingViolationTypeError = iota
+	MissingIPError               = 50
+	MissingReputationError       = iota
+	MissingViolationTypeError    = iota
 	MissingIPViolationEntryError = iota
 
 	// IO/DB errors
-	DBError = 60
-	CWDNotFound = iota
+	DBError      = 60
+	CWDNotFound  = iota
 	FileNotFound = iota
 )
-
 
 // Returns a format string for the errno
 // not implemented for all errnos

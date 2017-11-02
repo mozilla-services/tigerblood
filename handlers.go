@@ -1,13 +1,13 @@
 package tigerblood
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
-	"database/sql"
-	"fmt"
-	"net/http"
 	"io/ioutil"
-	"encoding/json"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -160,17 +160,17 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 
 func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, entry IpViolationEntry, msg string) {
 	type EntryError struct {
-		Errno int
+		Errno      int
 		EntryIndex int
-		Entry IpViolationEntry
-		Msg string
+		Entry      IpViolationEntry
+		Msg        string
 	}
 
 	entryError := EntryError{
-		Errno: errno,
+		Errno:      errno,
 		EntryIndex: entryIndex,
-		Entry: entry,
-		Msg: msg,
+		Entry:      entry,
+		Msg:        msg,
 	}
 	j, err := json.Marshal(entryError)
 	if err != nil {
@@ -182,7 +182,6 @@ func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, e
 	w.Write(j)
 	return
 }
-
 
 func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
@@ -305,7 +304,6 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-
 // UpdateReputation takes a JSON body from the http request and updates that reputation entry on the database.
 // The HTTP requests path has to contain the IP to be updated, in CIDR notation. The body can contain the IP address, or it can be omitted. For example:
 // {"Reputation": 50} or {"Reputation": 50, "IP":, "192.168.0.1"}. The IP in the JSON body will be ignored.
@@ -396,7 +394,6 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
-
 
 // ReadReputation returns a JSON-formatted reputation entry from the database.
 func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {

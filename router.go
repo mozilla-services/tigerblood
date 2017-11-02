@@ -6,7 +6,6 @@ import (
 	"net/http/pprof"
 )
 
-
 func AttachProfiler(router *mux.Router) {
 	// Register pprof handlers
 	router.HandleFunc("/debug/pprof/", pprof.Index)
@@ -43,29 +42,29 @@ func NewRouter() *mux.Router {
 }
 
 type Route struct {
-	Name         string
-	Method       string
-	Pattern      string
-	HandlerFunc  http.HandlerFunc
+	Name        string
+	Method      string
+	Pattern     string
+	HandlerFunc http.HandlerFunc
 }
 
 type Routes []Route
 
 var UnauthedRoutes = map[string]bool{
 	"/__lbheartbeat__": true,
-	"/__heartbeat__": true,
-	"/__version__": true,
+	"/__heartbeat__":   true,
+	"/__version__":     true,
 }
 
 var UnauthedDebugRoutes = map[string]bool{
-	"/debug/pprof/": true,
-	"/debug/pprof/cmdline": true,
-	"/debug/pprof/profile": true,
-	"/debug/pprof/symbol": true,
-	"/debug/pprof/heap": true,
-	"/debug/pprof/mutex": true,
-	"/debug/pprof/block": true,
-	"/debug/pprof/goroutine": true,
+	"/debug/pprof/":             true,
+	"/debug/pprof/cmdline":      true,
+	"/debug/pprof/profile":      true,
+	"/debug/pprof/symbol":       true,
+	"/debug/pprof/heap":         true,
+	"/debug/pprof/mutex":        true,
+	"/debug/pprof/block":        true,
+	"/debug/pprof/goroutine":    true,
 	"/debug/pprof/threadcreate": true,
 }
 
@@ -103,7 +102,7 @@ var routes = Routes{
 	Route{
 		"UpsertReputationByViolation",
 		"PUT",
-		"/violations/{type:[[:punct:]\\w]{1,255}}",  // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
+		"/violations/{type:[[:punct:]\\w]{1,255}}", // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
 		UpsertReputationByViolationHandler,
 	},
 	Route{

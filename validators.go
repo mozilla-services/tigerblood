@@ -1,6 +1,5 @@
 package tigerblood
 
-
 import (
 	"net"
 	"regexp"
@@ -28,7 +27,6 @@ func IsValidReputation(reputation uint) bool {
 func IsValidViolationPenalty(penalty uint64) bool {
 	return penalty >= 0 && penalty <= 100
 }
-
 
 var violationRegex = regexp.MustCompile(`[:\w]{1,255}`)
 

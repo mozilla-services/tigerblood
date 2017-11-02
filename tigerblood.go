@@ -1,8 +1,8 @@
 package tigerblood
 
 import (
-	"github.com/DataDog/datadog-go/statsd"
 	"encoding/json"
+	"github.com/DataDog/datadog-go/statsd"
 	log "github.com/Sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
 	"runtime"
@@ -55,7 +55,7 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 				log.Printf("Skipping invalid violation penalty: %s", penalty)
 			}
 		}
- 	}
+	}
 
 	violationPenalties = newPenalties
 

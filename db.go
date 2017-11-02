@@ -1,11 +1,11 @@
 package tigerblood
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
 	"database/sql"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/lib/pq"
+	"go.mozilla.org/mozlogrus"
 	"time"
 )
 
@@ -136,7 +136,6 @@ func (db DB) EmptyTables() error {
 	return nil
 }
 
-
 func (db DB) createReputationTable() error {
 	_, err := db.Query(createReputationTableSQL)
 	return err
@@ -168,7 +167,6 @@ func (db DB) InsertOrUpdateReputationPenalty(tx *sql.Tx, ip string, reputationPe
 	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, 100 - $2) ON CONFLICT (ip) DO UPDATE SET reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - $2));", ip, reputationPenalty)
 	return err
 }
-
 
 // InsertReputationEntry inserts a single ReputationEntry into the database
 func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {

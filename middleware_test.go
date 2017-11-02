@@ -2,11 +2,11 @@ package tigerblood
 
 import (
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"math/rand"
-	"io/ioutil"
 )
 
 // http://stackoverflow.com/a/22892986
@@ -30,7 +30,7 @@ func randViolations(numEntries int) map[string]uint {
 
 func TestSetViolationPenaltiesSkipsInvalidPenalties(t *testing.T) {
 	testViolations := map[string]uint{
-		"": 20,
+		"":                20,
 		"TestViolation:2": 120,
 	}
 
