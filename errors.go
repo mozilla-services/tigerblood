@@ -34,61 +34,63 @@ const (
 	// missing global errors usually result in warnings or 500 errors
 
 	// MissingDB db not configured
-	MissingDB           = 20
+	MissingDB = 20
 	// MissingStatsdClient statsd client not configured
 	MissingStatsdClient = iota
 	// MissingViolations violation penalties not set
-	MissingViolations   = iota
+	MissingViolations = iota
 
 	// encoding/decoding errors
 
 	// BodyReadError error reading request body
-	BodyReadError      = 30
+	BodyReadError = 30
 	// JSONMarshalError error marshalling json
-	JSONMarshalError   = iota
+	JSONMarshalError = iota
 	// JSONUnmarshalError error unmarshalling json
 	JSONUnmarshalError = iota
 
 	// validation errors usually result in a 400 error
 
 	// InvalidIPError IP/CIDR validation failure
-	InvalidIPError                 = 40
+	InvalidIPError = 40
 	// InvalidReputationError reputation validation failure
-	InvalidReputationError         = iota
+	InvalidReputationError = iota
 	// InvalidViolationTypeError violation type validation failed
-	InvalidViolationTypeError      = iota
+	InvalidViolationTypeError = iota
 	// TooManyIPViolationEntriesError too many IP Violation entries
 	TooManyIPViolationEntriesError = iota
+	// DuplicateIPError when the same IP occurs in multiple entries
+	DuplicateIPError = iota
 
 	// missing parameter errors usually result in a 400 error
 
 	// MissingIPError no IP in request params or body
-	MissingIPError               = 50
+	MissingIPError = 50
 	// MissingReputationError no reputation in request params or body
-	MissingReputationError       = iota
+	MissingReputationError = iota
 	// MissingViolationTypeError no violation type in request params or body
-	MissingViolationTypeError    = iota
+	MissingViolationTypeError = iota
 	// MissingIPViolationEntryError no (for the multi violations endpoint)
 	MissingIPViolationEntryError = iota
 
 	// IO/DB errors
 
 	// DBError generic postgres or postgres driver error
-	DBError      = 60
+	DBError = 60
 	// CWDNotFound error when get CWD fails
-	CWDNotFound  = iota
+	CWDNotFound = iota
 	// FileNotFound file not found error
 	FileNotFound = iota
+
+	// Unknown errors
+
+	// UnknownError is for generic errors
+	UnknownError = 999
 )
 
 // DescribeErrno returns a format string for the errno; not implemented for all errnos
 func DescribeErrno(errno Errno) string {
-	if errno == TooManyIPViolationEntriesError { // was seeing a compile error with this in the switch
-		return "Too many IP, violation objects in request body"
-	}
-
 	switch errno {
-
 	case BodyReadError:
 		return "Error reading the request body: %s"
 	case JSONMarshalError:
@@ -102,7 +104,13 @@ func DescribeErrno(errno Errno) string {
 		return "Invalid reputation: %s"
 	case InvalidViolationTypeError:
 		return "Invalid violation type: %s"
+	case TooManyIPViolationEntriesError:
+		return "Too many IP, violation objects in request body"
+	case DuplicateIPError:
+		return "Duplicate IP found in multiple entries"
+	}
 
+	switch errno {
 	case MissingIPError:
 		return "Error finding IP parameter in %s: %s"
 	case MissingReputationError:

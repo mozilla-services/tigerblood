@@ -124,7 +124,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 	assert.Nil(t, err)
 
 	testViolations := map[string]uint{
-		"Test:Violation": 90,
+		"Test:Violation":  90,
+		"Test:Violation2": 10,
 	}
 
 	SetDB(db)
@@ -147,7 +148,7 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 
 	t.Run("too many ips", func(t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.1.1", "Violation": "Test:Violation"}, {"ip": "192.168.2.1", "Violation": "Test:Violation"}, {"ip": "192.168.3.1", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.1.1", "Violation": "Test:Violation"}, {"ip": "192.168.2.1", "Violation": "Test:Violation"}, {"ip": "192.168.3.1", "Violation": "Test:Violation2"}]`)))
 		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
 
 		err = db.EmptyTables()
@@ -185,25 +186,23 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
-	t.Run("known violation duplicate ip counted twice", func(t *testing.T) {
-		// known violation type is subtracted from default reputation
+	t.Run("duplicate entry returns conflict", func(t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
-		assert.Equal(t, http.StatusNoContent, recorder.Code)
+		assert.Equal(t, http.StatusConflict, recorder.Code)
+	})
 
-		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
-		assert.Nil(t, err)
-		assert.Equal(t, uint(0), entry.Reputation)
-
-		err = db.EmptyTables()
-		assert.Nil(t, err)
+	t.Run("duplicate ip different violation type returns conflict", func(t *testing.T) {
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.1", "Violation": "Test:Violation2"}]`)))
+		assert.Equal(t, http.StatusConflict, recorder.Code)
 	})
 
 	t.Run("unknown violation type returns ip and index of first failure", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		h := HandleWithMiddleware(NewRouter(), []Middleware{})
-		req := httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": ""}]`))
+		req := httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Unknown"}]`))
 		h.ServeHTTP(recorder, req)
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 
@@ -212,7 +211,7 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		body, err := ioutil.ReadAll(res.Body)
 		assert.Nil(t, err)
 
-		assert.Equal(t, "{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}", string(body))
+		assert.Equal(t, "{\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"Unknown\"},\"Msg\":\"Violation type not found\"}", string(body))
 	})
 
 	t.Run("invalid violation type", func(t *testing.T) {

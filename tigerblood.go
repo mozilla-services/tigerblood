@@ -71,7 +71,6 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 	violationPenaltiesJSON = json
 }
 
-
 // SetMaxEntries updates the maximum number of entries in multi entry handlers
 func SetMaxEntries(newMaxEntries int) {
 	if newMaxEntries < 0 {

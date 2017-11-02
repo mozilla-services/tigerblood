@@ -223,13 +223,13 @@ Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT
 #### PUT /violations/
 
 Sets or updates the reputations for multiple IP addresses or networks
-with provided violation types i.e. `PUT /violations/{ip}` for each IP.
+with provided violation types like `PUT /violations/{ip}` for each IP.
 
-Accepts duplicates of an IP.
+Returns 409 Conflict for requests with duplicate IPs.
 
 In the event of an invalid or failed entry, returns the failing entry
-and index with the error response body below and does not roll back
-the accepted entries (i.e. doesn't run in a transaction).
+and index with the error response body below and rolls back
+the accepted entries to retry (i.e. everything runs as one SQL statement).
 
 Max entries can be configured with the `TIGERBLOOD_MAX_ENTRIES` env var,
 which default to 1000.
@@ -296,4 +296,4 @@ A JSON object with the schema (example below):
 
 Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-Example error response: `"{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}"`
+Example error response: `{\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"Unknown\"},\"Msg\":\"Violation type not found\"}`

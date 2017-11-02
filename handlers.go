@@ -112,32 +112,33 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	type ViolationBody struct {
 		Violation string
 	}
-	var entry ViolationBody
-	err = json.Unmarshal(body, &entry)
+	var bodyJSON ViolationBody
+	err = json.Unmarshal(body, &bodyJSON)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if !IsValidViolationName(entry.Violation) {
-		log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof(DescribeErrno(InvalidViolationTypeError), entry.Violation)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	entry := IPViolationEntry{
+		IP:        ip,
+		Violation: bodyJSON.Violation,
 	}
 
-	if violationPenalties == nil {
-		log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// lookup violation weight in config map
-	var penalty, ok = violationPenalties[entry.Violation]
-	if !ok {
-		log.WithFields(log.Fields{"errno": MissingViolationTypeError}).Infof("Could not find violation type: %s", entry.Violation)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Violation type not found."))
+	penalty, errno := ValidateIPViolationEntryAndGetPenalty(entry)
+	if errno > 0 {
+		switch errno {
+		case MissingViolations:
+			w.WriteHeader(http.StatusInternalServerError)
+		case MissingViolationTypeError:
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Violation type not found."))
+		case InvalidViolationTypeError:
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid violation type provided"))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -147,7 +148,11 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = db.InsertOrUpdateReputationPenalty(nil, ip, uint(penalty))
+	ips, penalties := make([]string, 1), make([]uint, 1)
+	ips[0] = ip
+	penalties[0] = penalty
+
+	err = db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
 	if _, ok := err.(CheckViolationError); ok {
 		log.WithFields(log.Fields{"errno": InvalidReputationError}).Warnf("Reputation is outside of valid range [0-100]")
 		w.WriteHeader(http.StatusBadRequest)
@@ -161,16 +166,13 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, entry IPViolationEntry, msg string) {
+func writeEntryErrorResponse(w http.ResponseWriter, entryIndex int, entry IPViolationEntry, statusCode int, msg string) {
 	type EntryError struct {
-		Errno      int
 		EntryIndex int
 		Entry      IPViolationEntry
 		Msg        string
 	}
-
 	entryError := EntryError{
-		Errno:      errno,
 		EntryIndex: entryIndex,
 		Entry:      entry,
 		Msg:        msg,
@@ -180,8 +182,7 @@ func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, e
 		log.Warnf("error marshaling error response JSON: %s", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
-
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(statusCode)
 	w.Write(j)
 	return
 }
@@ -219,40 +220,42 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	var seenIps = make(map[string]bool)
+	var ips = make([]string, len(entries))
+	var penalties = make([]uint, len(entries))
+
 	for i, entry := range entries {
-		if !IsValidViolationName(entry.Violation) {
-			log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof(DescribeErrno(InvalidViolationTypeError), entry.Violation)
-			writeEntryErrorResponse(w, InvalidViolationTypeError, i, entry, string(""))
+		penalty, errno := ValidateIPViolationEntryAndGetPenalty(entry)
+		if errno > 0 {
+			switch errno {
+			case MissingViolations:
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, DescribeErrno(MissingViolations))
+			case MissingViolationTypeError:
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string("Violation type not found"))
+			case InvalidViolationTypeError:
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string("Invalid violation type provided"))
+			default:
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string(""))
+			}
 			return
 		}
 
-		if violationPenalties == nil {
-			log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
-			writeEntryErrorResponse(w, MissingViolations, i, entry, string(""))
+		if duplicateIP, ok := seenIps[entry.IP]; ok {
+			writeEntryErrorResponse(w, i, entry, http.StatusConflict, fmt.Sprintf(DescribeErrno(DuplicateIPError), duplicateIP))
 			return
 		}
-
-		// lookup violation weight in config map
-		var penalty, ok = violationPenalties[entry.Violation]
-		if !ok {
-			log.WithFields(log.Fields{"errno": MissingViolationTypeError}).Infof("Could not find violation type: %s", entry.Violation)
-			writeEntryErrorResponse(w, MissingViolationTypeError, i, entry, string("Violation type not found."))
-			return
-		}
-
-		err = db.InsertOrUpdateReputationPenalty(nil, entry.IP, uint(penalty))
-		if _, ok := err.(CheckViolationError); ok {
-			log.WithFields(log.Fields{"errno": InvalidReputationError}).Warnf("Reputation is outside of valid range [0-100]")
-			writeEntryErrorResponse(w, InvalidReputationError, i, entry, string("Reputation is outside of valid range [0-100]"))
-			return
-		} else if err != nil {
-			log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry by violation: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		log.Debugf("Updated reputation for %s due to %d", entry.IP, penalty)
+		seenIps[entry.IP] = true
+		ips[i], penalties[i] = entry.IP, penalty
 	}
 
+	err = db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
+	if err != nil {
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry by violation: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("Updated %s reputations", len(entries))
 	w.WriteHeader(http.StatusNoContent)
 }
 
