@@ -231,10 +231,13 @@ In the event of an invalid or failed entry, returns the failing entry
 and index with the error response body below and does not roll back
 the accepted entries (i.e. doesn't run in a transaction).
 
-Max entries can be configured with the TIGERBLOOD_MAX_ENTRIES env var.
+Max entries can be configured with the `TIGERBLOOD_MAX_ENTRIES` env var,
+which default to 1000.
 
 * Request parameters: None
-* Request body: a JSON object with the schema:
+* Request body:
+
+A JSON object with the schema (example below):
 
 ```json
 [{
