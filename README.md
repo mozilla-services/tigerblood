@@ -280,7 +280,7 @@ A JSON object with the schema (example below):
          "Violation": {
            "type": "string"
          },
-         "Ip": {
+         "IP": {
            "type": "string"
          }
       }
@@ -296,4 +296,4 @@ A JSON object with the schema (example below):
 
 Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-Example error response: `"{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"Ip\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}"`
+Example error response: `"{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}"`

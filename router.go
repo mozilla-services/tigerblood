@@ -6,7 +6,7 @@ import (
 	"net/http/pprof"
 )
 
-func AttachProfiler(router *mux.Router) {
+func attachProfiler(router *mux.Router) {
 	// Register pprof handlers
 	router.HandleFunc("/debug/pprof/", pprof.Index)
 	router.HandleFunc("/debug/pprof/mutex", pprof.Index)
@@ -19,11 +19,12 @@ func AttachProfiler(router *mux.Router) {
 	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 }
 
+// NewRouter returns a new gorilla/mux router
 func NewRouter() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 
 	if useProfileHandlers {
-		AttachProfiler(router)
+		attachProfiler(router)
 	}
 
 	for _, route := range routes {
@@ -41,6 +42,7 @@ func NewRouter() *mux.Router {
 	return router
 }
 
+// Route a struct for holding a route config
 type Route struct {
 	Name        string
 	Method      string
@@ -48,14 +50,17 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
+// Routes an array of Routes for configuring a Router
 type Routes []Route
 
+// UnauthedRoutes routes that don't require hawk auth
 var UnauthedRoutes = map[string]bool{
 	"/__lbheartbeat__": true,
 	"/__heartbeat__":   true,
 	"/__version__":     true,
 }
 
+// UnauthedDebugRoutes profiling routes that don't require hawk auth
 var UnauthedDebugRoutes = map[string]bool{
 	"/debug/pprof/":             true,
 	"/debug/pprof/cmdline":      true,

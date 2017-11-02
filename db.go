@@ -13,6 +13,7 @@ func init() {
 	mozlogrus.Enable("tigerblood")
 }
 
+// CheckViolationError postgres violation error
 type CheckViolationError struct {
 	Inner *pq.Error
 }
@@ -21,6 +22,7 @@ func (e CheckViolationError) Error() string {
 	return e.Inner.Error()
 }
 
+// DuplicateKeyError postgres duplicate key error
 type DuplicateKeyError struct {
 	Inner *pq.Error
 }
@@ -32,6 +34,7 @@ func (e DuplicateKeyError) Error() string {
 const pgDuplicateKeyErrorCode = "23505"
 const pgCheckViolationErrorCode = "23514"
 
+// ErrNoRowsAffected error to detect when an update doesn't occur
 var ErrNoRowsAffected = fmt.Errorf("No rows affected")
 
 // DB is a DB instance for running queries against the tigerblood database
@@ -40,13 +43,15 @@ type DB struct {
 	reputationSelectStmt *sql.Stmt
 }
 
+// ReputationEntry an (IP, Reputation) entry
 type ReputationEntry struct {
 	IP         string
 	Reputation uint
 }
 
-type IpViolationEntry struct {
-	Ip        string
+// IPViolationEntry an (IP, Violation) where Violation is the violation type name
+type IPViolationEntry struct {
+	IP        string
 	Violation string
 }
 

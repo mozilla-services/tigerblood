@@ -3,54 +3,87 @@ package tigerblood
 // errno and descriptions for APP-MOZLOG
 // must be > 0 to indicate error https://wiki.mozilla.org/Firefox/Services/Logging#Application_Request_Summary_.28Type:.22request.summary.22.29
 
+// Errno an error number for looking up error messages
 type Errno uint
 
 const (
 	// auth errors
 	_ = iota
+
+	// HawkAuthFormatError a hawk error
 	HawkAuthFormatError
+	// HawkReplayError hawk replay attack detected
 	HawkReplayError
+	// HawkErrNoAuth missing hawk auth header
 	HawkErrNoAuth
+	// HawkInvalidHash invalid hawk hash
 	HawkInvalidHash
+	// HawkCredError missing or incorrect hawk creds
 	HawkCredError
+	// HawkOtherAuthError other hawk errors
 	HawkOtherAuthError
+	// HawkMissingContentType no or invalid content type header
 	HawkMissingContentType
+	// HawkValidationError hawk validation failed
 	HawkValidationError
+	// HawkInvalidBodyHash invalid hawk body hash
 	HawkInvalidBodyHash
+	// HawkReadBodyError error reading the request body
 	HawkReadBodyError
 
 	// missing global errors usually result in warnings or 500 errors
+
+	// MissingDB db not configured
 	MissingDB           = 20
+	// MissingStatsdClient statsd client not configured
 	MissingStatsdClient = iota
+	// MissingViolations violation penalties not set
 	MissingViolations   = iota
 
 	// encoding/decoding errors
+
+	// BodyReadError error reading request body
 	BodyReadError      = 30
+	// JSONMarshalError error marshalling json
 	JSONMarshalError   = iota
+	// JSONUnmarshalError error unmarshalling json
 	JSONUnmarshalError = iota
 
 	// validation errors usually result in a 400 error
+
+	// InvalidIPError IP/CIDR validation failure
 	InvalidIPError                 = 40
+	// InvalidReputationError reputation validation failure
 	InvalidReputationError         = iota
+	// InvalidViolationTypeError violation type validation failed
 	InvalidViolationTypeError      = iota
-	TooManyIpViolationEntriesError = iota
+	// TooManyIPViolationEntriesError too many IP Violation entries
+	TooManyIPViolationEntriesError = iota
 
 	// missing parameter errors usually result in a 400 error
+
+	// MissingIPError no IP in request params or body
 	MissingIPError               = 50
+	// MissingReputationError no reputation in request params or body
 	MissingReputationError       = iota
+	// MissingViolationTypeError no violation type in request params or body
 	MissingViolationTypeError    = iota
+	// MissingIPViolationEntryError no (for the multi violations endpoint)
 	MissingIPViolationEntryError = iota
 
 	// IO/DB errors
+
+	// DBError generic postgres or postgres driver error
 	DBError      = 60
+	// CWDNotFound error when get CWD fails
 	CWDNotFound  = iota
+	// FileNotFound file not found error
 	FileNotFound = iota
 )
 
-// Returns a format string for the errno
-// not implemented for all errnos
+// DescribeErrno returns a format string for the errno; not implemented for all errnos
 func DescribeErrno(errno Errno) string {
-	if errno == TooManyIpViolationEntriesError { // was seeing a compile error with this in the switch
+	if errno == TooManyIPViolationEntriesError { // was seeing a compile error with this in the switch
 		return "Too many IP, violation objects in request body"
 	}
 

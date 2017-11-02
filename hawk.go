@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// HawkData is hawk config data (.credentials is a map of Hawk IDs to passwords)
 type HawkData struct {
 	credentials map[string]string
 }
@@ -21,12 +22,14 @@ func init() {
 	mozlogrus.Enable("tigerblood")
 }
 
+// NewHawkData returns hawk config data for a map of hawk creds
 func NewHawkData(secrets map[string]string) *HawkData {
 	return &HawkData{
 		credentials: secrets,
 	}
 }
 
+// RequireHawkAuth middleware for checking a hawk auth header
 func RequireHawkAuth(credentials map[string]string) Middleware {
 	m := NewHawkData(credentials)
 

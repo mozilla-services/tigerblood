@@ -8,10 +8,10 @@ import (
 	"runtime"
 )
 
-var db *DB = nil
-var statsdClient *statsd.Client = nil
-var violationPenalties map[string]uint = nil
-var violationPenaltiesJson []byte = nil
+var db *DB
+var statsdClient *statsd.Client
+var violationPenalties map[string]uint
+var violationPenaltiesJSON []byte
 var useProfileHandlers = false
 var maxEntries = int(100)
 
@@ -19,14 +19,16 @@ func init() {
 	mozlogrus.Enable("tigerblood")
 }
 
+// SetDB sets or updates the db handle
 func SetDB(newDb *DB) {
 	db = newDb
 }
 
+// SetProfileHandlers enables or disables runtime profile handlers
 func SetProfileHandlers(profileHandlers bool) {
 	useProfileHandlers = profileHandlers
 
-	for route, _ := range UnauthedDebugRoutes {
+	for route := range UnauthedDebugRoutes {
 		UnauthedRoutes[route] = useProfileHandlers
 	}
 	log.Printf("Unauthed routes: %s", UnauthedRoutes)
@@ -40,10 +42,12 @@ func SetProfileHandlers(profileHandlers bool) {
 	}
 }
 
+// SetStatsdClient sets or updates the statsd client for handlers
 func SetStatsdClient(newClient *statsd.Client) {
 	statsdClient = newClient
 }
 
+// SetViolationPenalties sets or updates the violation penalties map
 func SetViolationPenalties(newPenalties map[string]uint) {
 	for violationType, penalty := range newPenalties {
 		if !(IsValidViolationName(violationType) && IsValidViolationPenalty(uint64(penalty))) {
@@ -59,14 +63,16 @@ func SetViolationPenalties(newPenalties map[string]uint) {
 
 	violationPenalties = newPenalties
 
-	// set violationPenaltiesJson
+	// set violationPenaltiesJSON
 	json, err := json.Marshal(violationPenalties)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
 	}
-	violationPenaltiesJson = json
+	violationPenaltiesJSON = json
 }
 
+
+// SetMaxEntries updates the maximum number of entries in multi entry handlers
 func SetMaxEntries(newMaxEntries int) {
 	if newMaxEntries < 0 {
 		log.Fatal("MAX_ENTRIES must be positive")

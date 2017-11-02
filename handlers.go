@@ -17,11 +17,13 @@ func init() {
 	mozlogrus.Enable("tigerblood")
 }
 
+// LoadBalancerHeartbeatHandler returns 200 if the server is up
 func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	return
 }
 
+// HeartbeatHandler pings the DB and returns 200 or 500
 func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 	if db == nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -37,6 +39,7 @@ func HeartbeatHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// VersionHandler returns the version.json file
 func VersionHandler(w http.ResponseWriter, req *http.Request) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -61,9 +64,9 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 	http.ServeContent(w, req, "__version__", stat.ModTime(), f)
 }
 
-// Returns a list of known violations for debugging
+// ListViolationsHandler returns a JSON array of known violations for debugging
 func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
-	if violationPenalties == nil || violationPenaltiesJson == nil {
+	if violationPenalties == nil || violationPenaltiesJSON == nil {
 		log.WithFields(log.Fields{"errno": MissingViolations}).Warnf(DescribeErrno(MissingViolations))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -71,10 +74,10 @@ func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(violationPenaltiesJson)
+	w.Write(violationPenaltiesJSON)
 }
 
-// UpsertReputationByViolation takes a JSON body from the http request
+// UpsertReputationByViolationHandler takes a JSON body from the http request
 // and upserts the reputation entry on the database to the reputation
 // given in reputation violation.  The HTTP requests path has to
 // contain the IP to be updated, in CIDR notation. For example:
@@ -158,11 +161,11 @@ func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, entry IpViolationEntry, msg string) {
+func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, entry IPViolationEntry, msg string) {
 	type EntryError struct {
 		Errno      int
 		EntryIndex int
-		Entry      IpViolationEntry
+		Entry      IPViolationEntry
 		Msg        string
 	}
 
@@ -183,6 +186,7 @@ func writeEntryErrorResponse(w http.ResponseWriter, errno int, entryIndex int, e
 	return
 }
 
+// MultiUpsertReputationByViolationHandler creates or update reputation entries for many IPViolationEntries
 func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -190,7 +194,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	var entries []IpViolationEntry
+	var entries []IPViolationEntry
 	err = json.Unmarshal(body, &entries)
 	if err != nil {
 		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
@@ -204,7 +208,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if len(entries) > maxEntries {
-		log.WithFields(log.Fields{"errno": TooManyIpViolationEntriesError}).Warn(DescribeErrno(TooManyIpViolationEntriesError))
+		log.WithFields(log.Fields{"errno": TooManyIPViolationEntriesError}).Warn(DescribeErrno(TooManyIPViolationEntriesError))
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -236,7 +240,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		err = db.InsertOrUpdateReputationPenalty(nil, entry.Ip, uint(penalty))
+		err = db.InsertOrUpdateReputationPenalty(nil, entry.IP, uint(penalty))
 		if _, ok := err.(CheckViolationError); ok {
 			log.WithFields(log.Fields{"errno": InvalidReputationError}).Warnf("Reputation is outside of valid range [0-100]")
 			writeEntryErrorResponse(w, InvalidReputationError, i, entry, string("Reputation is outside of valid range [0-100]"))
@@ -246,13 +250,13 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		log.Debugf("Updated reputation for %s due to %d", entry.Ip, penalty)
+		log.Debugf("Updated reputation for %s due to %d", entry.IP, penalty)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// CreateReputation takes a JSON formatted IP reputation entry from
+// CreateReputationHandler takes a JSON formatted IP reputation entry from
 // the http request and inserts it to the database.
 func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	var entry ReputationEntry
@@ -304,7 +308,7 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// UpdateReputation takes a JSON body from the http request and updates that reputation entry on the database.
+// UpdateReputationHandler takes a JSON body from the http request and updates that reputation entry on the database.
 // The HTTP requests path has to contain the IP to be updated, in CIDR notation. The body can contain the IP address, or it can be omitted. For example:
 // {"Reputation": 50} or {"Reputation": 50, "IP":, "192.168.0.1"}. The IP in the JSON body will be ignored.
 func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
@@ -366,7 +370,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeleteReputation deletes an entry based on the IP address provided on the path
+// DeleteReputationHandler deletes an entry based on the IP address provided on the path
 func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
@@ -395,7 +399,7 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ReadReputation returns a JSON-formatted reputation entry from the database.
+// ReadReputationHandler returns a JSON-formatted reputation entry from the database.
 func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {

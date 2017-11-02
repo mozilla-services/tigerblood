@@ -212,7 +212,7 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		body, err := ioutil.ReadAll(res.Body)
 		assert.Nil(t, err)
 
-		assert.Equal(t, "{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"Ip\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}", string(body))
+		assert.Equal(t, "{\"Errno\":19,\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"\"},\"Msg\":\"\"}", string(body))
 	})
 
 	t.Run("invalid violation type", func(t *testing.T) {
