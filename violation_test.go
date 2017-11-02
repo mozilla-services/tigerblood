@@ -149,7 +149,7 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 	t.Run("too many ips", func (t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.1.1", "Violation": "Test:Violation"}, {"ip": "192.168.2.1", "Violation": "Test:Violation"}, {"ip": "192.168.3.1", "Violation": "Test:Violation"}]`)))
-		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
 
 		err = db.EmptyTables()
 		assert.Nil(t, err)

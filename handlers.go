@@ -206,7 +206,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 	}
 	if len(entries) > maxEntries {
 		log.WithFields(log.Fields{"errno": TooManyIpViolationEntriesError}).Warn(DescribeErrno(TooManyIpViolationEntriesError))
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return
 	}
 
