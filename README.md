@@ -262,6 +262,8 @@ A JSON object with the schema (example below):
 
 * Error Response body:
 
+A JSON object with the schema (example below):
+
 ```
 {
   "type": "object",
