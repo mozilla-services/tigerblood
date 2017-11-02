@@ -1,7 +1,7 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/bmhatfield/go-runtime-metrics/collector"

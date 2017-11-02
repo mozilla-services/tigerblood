@@ -3,7 +3,7 @@ package tigerblood
 import (
 	"bytes"
 	"crypto/sha256"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"go.mozilla.org/hawk"
 	"go.mozilla.org/mozlogrus"
 	"io"

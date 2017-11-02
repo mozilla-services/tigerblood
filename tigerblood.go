@@ -3,7 +3,7 @@ package tigerblood
 import (
 	"encoding/json"
 	"github.com/DataDog/datadog-go/statsd"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
 	"runtime"
 )

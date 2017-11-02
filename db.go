@@ -3,7 +3,7 @@ package tigerblood
 import (
 	"database/sql"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/lib/pq"
 	"go.mozilla.org/mozlogrus"
 	"time"
