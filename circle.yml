@@ -3,11 +3,11 @@ machine:
     - docker
   post:
     - mkdir -p download
-    - test -e download/$GODIST || curl -o download/$GODIST https://storage.googleapis.com/golang/$GODIST
+    - test -e download/$GODIST || curl -L -o download/$GODIST https://redirector.gvt1.com/edgedl/go/$GODIST
     - sudo rm -rf /usr/local/go
     - sudo tar -C /usr/local -xzf download/$GODIST
   environment:
-    GODIST: "go1.8.4.linux-amd64.tar.gz"
+    GODIST: "go1.9.2.linux-amd64.tar.gz"
     IMPORT_PATH: "go.mozilla.org/tigerblood"
     GWS: "$HOME/.go_workspace"
     TIGERBLOOD_DSN: "user=tigerblood dbname=tigerblood sslmode=disable"
