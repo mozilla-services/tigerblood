@@ -1,5 +1,5 @@
 
-.PHONY: loadtest build-db start-db setup-db rm-db
+.PHONY: loadtest build-db start-db setup-db rm-db run
 
 loadtest:
 	HAWK_ID=root HAWK_KEY=toor locust --host=http://localhost:8000 -f tools/loadtesting/locustfile.py
@@ -34,3 +34,13 @@ build:
 
 build-static:
 	CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
+
+run:
+	TIGERBLOOD_BIND_ADDR=127.0.0.1:8080 \
+		TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" \
+		TIGERBLOOD_HAWK=true \
+		TIGERBLOOD_PROFILE=true \
+		TIGERBLOOD_DATABASE_MAX_OPEN_CONNS=5 \
+		TIGERBLOOD_DATABASE_MAX_IDLE_CONNS=5 \
+		TIGERBLOOD_DATABASE_MAXLIFETIME=24h \
+			./tigerblood --config-file config.yml
