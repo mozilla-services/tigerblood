@@ -8,9 +8,11 @@ build-db:
 	docker build -f postgres.Dockerfile -t postgres-ip4r .
 
 start-db:
+	# create a postgres container bound to port 5432 locally
 	docker run --detach --name postgres-ip4r -p 127.0.0.1:5432:5432 postgres-ip4r
 
 setup-db:
+	# create tigerblood user and database
 	docker exec -ti postgres-ip4r bash -c 'psql -U postgres -c "CREATE ROLE tigerblood WITH LOGIN;"'
 	docker exec -ti postgres-ip4r bash -c 'psql -U postgres -c "CREATE DATABASE tigerblood;"'
 	docker exec -ti postgres-ip4r bash -c 'psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE tigerblood TO tigerblood;"'
