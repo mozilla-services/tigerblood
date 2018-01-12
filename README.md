@@ -31,7 +31,7 @@ The following configuration options are available:
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
-| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Names should not include dashes.          | -                 |
+| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | STATSD\_NAMESPACE          | The statsd namespace prefix                                                              | tigerblood.       |
 | PUBLISH\_RUNTIME\_STATS    | true to enable sending go runtime stats to STATSD\_ADDR                                  | false             |
@@ -57,6 +57,13 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
         "rate_limit_exceeded": 2
     }
 }
+```
+
+After setting up the db, we can use the example config file to run the service:
+
+```
+cp config.yml.example config.yml
+make run
 ```
 
 ## Decay lambda function
