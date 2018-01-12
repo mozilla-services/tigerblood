@@ -1,8 +1,11 @@
 
-.PHONY: loadtest start-db setup-db rm-db
+.PHONY: loadtest build-db start-db setup-db rm-db
 
 loadtest:
 	HAWK_ID=root HAWK_KEY=toor locust --host=http://localhost:8000 -f tools/loadtesting/locustfile.py
+
+build-db:
+	docker build -f postgres.Dockerfile -t postgres-ip4r .
 
 start-db:
 	docker run --detach --name postgres-ip4r -p 127.0.0.1:5432:5432 postgres-ip4r
