@@ -53,9 +53,7 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
     "CREDENTIALS": {
         "root": "toor"
     },
-    "VIOLATION_PENALTIES": {
-        "rate_limit_exceeded": 2
-    }
+    "VIOLATION_PENALTIES": "rate_limit_exceeded=2"
 }
 ```
 
