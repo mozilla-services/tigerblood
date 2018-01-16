@@ -292,3 +292,54 @@ A JSON object with the schema (example below):
 Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
 
 Example error response: `{\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"Unknown\"},\"Msg\":\"Violation type not found\"}`
+
+## CLI API
+
+A CLI tool for Ops to ban IPs manually lives in `cmd/tigerblood-cli`.
+
+To install it:
+
+```console
+go get -u go.mozilla.org/tigerblood-cli
+```
+
+Check that it's working:
+
+```console
+tigerblood-cli help
+Command line client for managing IP Reputations. It requires
+the environment variables TIGERBLOOD_HAWK_ID, TIGERBLOOD_HAWK_SECRET, TIGERBLOOD_URL. Example usage:
+
+TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8000/ tigerblood-cli ban 192.8.8.0/8
+
+Usage:
+  tigerblood-cli [command]
+
+Available Commands:
+  ban         Ban an IP for the maximum decay period (environment dependent).
+  help        Help about any command
+
+Flags:
+      --config string   config file (default is $HOME/.tigerblood-cli.yaml)
+  -h, --help            help for tigerblood-cli
+  -t, --toggle          Help message for toggle
+
+Use "tigerblood-cli [command] --help" for more information about a command.
+```
+
+To ban an IP:
+
+1. Get HAWK creds from the @foxsec team
+1. Export them into your environment e.g.
+
+```console
+export TIGERBLOOD_HAWK_ID=root
+export TIGERBLOOD_HAWK_SECRET=toor
+export TIGERBLOOD_URL=http://localhost:8080/
+```
+
+1. Ban things temporarily:
+
+```console
+tigerblood-cli ban 0.0.0.0
+```
