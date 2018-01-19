@@ -1,0 +1,3 @@
+credentials: {"root":"toor"}
+violation_penalties: request.blockIp=10,request.checkAuthenticated.block.devicesNotify=20
+profile: true

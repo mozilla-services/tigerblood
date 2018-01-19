@@ -8,21 +8,11 @@ In order to run the tests, you need a local postgresql database listening on por
 
 If you don't want to install postgres, you can do this from a docker container:
 
-- Build the container with `docker build -f postgres.Dockerfile -t postgres-ip4r .`.
-- Run `docker run --name postgres -p 127.0.0.1:5432:5432 -d postgres-ip4r` to create a postgres container bound to port 5432 locally.
-- Run `docker exec -ti postgres bash` to get a shell inside the container.
-- From this shell, run `psql -U postgres`. You should get a postgres prompt.
-- Run the following SQL to create the `tigerblood` user and database:
-  ```sql
-
-  CREATE ROLE tigerblood WITH LOGIN;
-  CREATE DATABASE tigerblood;
-  GRANT ALL PRIVILEGES ON DATABASE tigerblood TO tigerblood;
-  \c tigerblood
-  CREATE EXTENSION ip4r;
-  ```
-- Exit postgres by typing `\q` and pressing the Return key.
-- Exit the docker container by typing `exit` and pressing the Return key.
+```console
+make build-db start-db
+# wait for db to start
+make setup-db
+```
 
 ## Healthcheck
 
@@ -41,7 +31,7 @@ The following configuration options are available:
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
-| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive.          | -                 |
+| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | STATSD\_NAMESPACE          | The statsd namespace prefix                                                              | tigerblood.       |
 | PUBLISH\_RUNTIME\_STATS    | true to enable sending go runtime stats to STATSD\_ADDR                                  | false             |
@@ -63,10 +53,15 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
     "CREDENTIALS": {
         "root": "toor"
     },
-    "VIOLATION_PENALTIES": {
-        "rate-limit-exceeded": 2
-    }
+    "VIOLATION_PENALTIES": "rate_limit_exceeded=2"
 }
+```
+
+After setting up the db, we can use the example config file to run the service:
+
+```
+cp config.yml.example config.yml
+make run
 ```
 
 ## Decay lambda function
@@ -297,3 +292,54 @@ A JSON object with the schema (example below):
 Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"}]' -X PUT http://tigerblood/violations/ --header "Authorization: {YOUR_HAWK_HEADER}"`
 
 Example error response: `{\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"Unknown\"},\"Msg\":\"Violation type not found\"}`
+
+## CLI API
+
+A CLI tool for Ops to ban IPs manually lives in `cmd/tigerblood-cli`.
+
+To install it:
+
+```console
+go get -u go.mozilla.org/tigerblood-cli
+```
+
+Check that it's working:
+
+```console
+tigerblood-cli help
+Command line client for managing IP Reputations. It requires
+the environment variables TIGERBLOOD_HAWK_ID, TIGERBLOOD_HAWK_SECRET, TIGERBLOOD_URL. Example usage:
+
+TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8000/ tigerblood-cli ban 192.8.8.0/8
+
+Usage:
+  tigerblood-cli [command]
+
+Available Commands:
+  ban         Ban an IP for the maximum decay period (environment dependent).
+  help        Help about any command
+
+Flags:
+      --config string   config file (default is $HOME/.tigerblood-cli.yaml)
+  -h, --help            help for tigerblood-cli
+  -t, --toggle          Help message for toggle
+
+Use "tigerblood-cli [command] --help" for more information about a command.
+```
+
+To ban an IP:
+
+1. Get HAWK creds from the @foxsec team
+1. Export them into your environment e.g.
+
+```console
+export TIGERBLOOD_HAWK_ID=root
+export TIGERBLOOD_HAWK_SECRET=toor
+export TIGERBLOOD_URL=http://localhost:8080/
+```
+
+1. Ban things temporarily:
+
+```console
+tigerblood-cli ban 0.0.0.0
+```
