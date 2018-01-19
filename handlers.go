@@ -317,7 +317,7 @@ func CreateReputationHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateReputationHandler takes a JSON body from the http request and updates that reputation entry on the database.
 // The HTTP requests path has to contain the IP to be updated, in CIDR notation. The body can contain the IP address, or it can be omitted. For example:
-// {"Reputation": 50} or {"Reputation": 50, "IP":, "192.168.0.1"}. The IP in the JSON body will be ignored.
+// {"Reputation": 50} or {"Reputation": 50, "IP": "192.168.0.1"}. The IP in the JSON body will be ignored.
 func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {

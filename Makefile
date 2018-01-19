@@ -32,6 +32,12 @@ coverage:
 build:
 	go build ./cmd/tigerblood/
 
+build-cli:
+	go build ./cmd/tigerblood-cli/
+
+clean-cli:
+	rm -f ./tigerblood-cli
+
 build-static:
 	CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
 
