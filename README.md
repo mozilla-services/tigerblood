@@ -300,7 +300,7 @@ A CLI tool for Ops to ban IPs manually lives in `cmd/tigerblood-cli`.
 To install it:
 
 ```console
-go get -u go.mozilla.org/tigerblood-cli
+go get -v github.com/mozilla-services/tigerblood/cmd/tigerblood-cli
 ```
 
 Check that it's working:
@@ -310,7 +310,7 @@ tigerblood-cli help
 Command line client for managing IP Reputations. It requires
 the environment variables TIGERBLOOD_HAWK_ID, TIGERBLOOD_HAWK_SECRET, TIGERBLOOD_URL. Example usage:
 
-TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8000/ tigerblood-cli ban 192.8.8.0/8
+TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8080/ tigerblood-cli ban 192.8.8.0
 
 Usage:
   tigerblood-cli [command]
