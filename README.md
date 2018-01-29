@@ -300,7 +300,7 @@ A CLI tool for Ops to ban IPs manually lives in `cmd/tigerblood-cli`.
 To install it:
 
 ```console
-go get -u go.mozilla.org/tigerblood-cli
+go get -v github.com/mozilla-services/tigerblood/cmd/tigerblood-cli
 ```
 
 Check that it's working:
