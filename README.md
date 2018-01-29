@@ -310,7 +310,7 @@ tigerblood-cli help
 Command line client for managing IP Reputations. It requires
 the environment variables TIGERBLOOD_HAWK_ID, TIGERBLOOD_HAWK_SECRET, TIGERBLOOD_URL. Example usage:
 
-TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8000/ tigerblood-cli ban 192.8.8.0/8
+TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8080/ tigerblood-cli ban 192.8.8.0
 
 Usage:
   tigerblood-cli [command]
