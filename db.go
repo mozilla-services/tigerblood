@@ -56,6 +56,14 @@ type IPViolationEntry struct {
 	Violation string
 }
 
+// ExceptionEntry describes an IP address exception
+type ExceptionEntry struct {
+	IP       string    // IP subnet exception applies to
+	Creator  string    // Entity that created exception
+	Modified time.Time // Entry modification date
+	Expires  time.Time // Entry expiry date
+}
+
 func checkConnection(db *DB) {
 	for {
 		var one uint
@@ -91,7 +99,9 @@ func NewDB(dsn string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Could not create tables: %s", err)
 	}
-	reputationSelectStmt, err := db.Prepare("SELECT ip, reputation FROM reputation WHERE ip >>= $1 ORDER BY @ ip LIMIT 1;")
+	reputationSelectStmt, err := db.Prepare("SELECT ip, reputation FROM reputation WHERE ip >>= $1 " +
+		"AND NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip) " +
+		"ORDER BY @ ip LIMIT 1;")
 	if err != nil {
 		return nil, fmt.Errorf("Could not create prepared statement: %s", err)
 	}
@@ -111,8 +121,23 @@ reputation int NOT NULL CHECK (reputation >= 0 AND reputation <= 100)
 CREATE INDEX IF NOT EXISTS reputation_ip_idx ON reputation USING gist (ip);
 `
 
+const createExceptionTableSQL = `
+CREATE TABLE IF NOT EXISTS exception (
+ip ip4r NOT NULL,
+modified timestamp with time zone NOT NULL,
+expires timestamp with time zone,
+creator text NOT NULL,
+UNIQUE(ip, creator)
+);
+CREATE INDEX IF NOT EXISTS exception_ip_idx ON exception USING gist (ip);
+`
+
 const emptyReputationTableSQL = `
 TRUNCATE TABLE reputation;
+`
+
+const emptyExceptionTableSQL = `
+TRUNCATE TABLE exception;
 `
 
 // Close closes the database
@@ -130,6 +155,10 @@ func (db DB) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Could not create reputation table: %s", err)
 	}
+	err = db.createExceptionTable()
+	if err != nil {
+		return fmt.Errorf("Could not create exception table: %s", err)
+	}
 	return nil
 }
 
@@ -138,6 +167,10 @@ func (db DB) EmptyTables() error {
 	err := db.emptyReputationTable()
 	if err != nil {
 		return fmt.Errorf("Could not truncate reputation table: %s", err)
+	}
+	err = db.emptyExceptionTable()
+	if err != nil {
+		return fmt.Errorf("Could not truncate exception table: %s", err)
 	}
 	return nil
 }
@@ -152,13 +185,25 @@ func (db DB) emptyReputationTable() error {
 	return err
 }
 
+func (db DB) createExceptionTable() error {
+	_, err := db.Query(createExceptionTableSQL)
+	return err
+}
+
+func (db DB) emptyExceptionTable() error {
+	_, err := db.Query(emptyExceptionTableSQL)
+	return err
+}
+
 // InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, and if it already exists, it updates it
 func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	exec := db.Exec
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2) ON CONFLICT (ip) DO UPDATE SET reputation = $2;", entry.IP, entry.Reputation)
+	_, err := exec("INSERT INTO reputation (ip, reputation) "+
+		"SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip)"+
+		"ON CONFLICT (ip) DO UPDATE SET reputation = $2;", entry.IP, entry.Reputation)
 	return err
 }
 
@@ -171,17 +216,28 @@ func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string, reputat
 		exec = tx.Exec
 	}
 
-	sqlStr := "INSERT INTO reputation (ip, reputation) VALUES "
 	vals := []interface{}{}
+	index := 0
+
+	sqlStr := "WITH x AS (SELECT * FROM unnest(array["
 
 	for i, ip := range ips {
-		penalty := reputationPenalties[i]
-		sqlStr += fmt.Sprintf("($%d, 100 - $%d),", (i*2)+1, (i*2)+2)
-		vals = append(vals, ip, penalty)
+		sqlStr += fmt.Sprintf("$%d,", i+1)
+		vals = append(vals, ip)
+		index = i + 1
 	}
-
 	sqlStr = strings.TrimSuffix(sqlStr, ",")
-	sqlStr += " ON CONFLICT (ip) DO UPDATE SET reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - (100 - excluded.reputation)));"
+
+	sqlStr += "]::ip4r[], array["
+	for i, p := range reputationPenalties {
+		sqlStr += fmt.Sprintf("100 - $%d,", index+i+1)
+		vals = append(vals, p)
+	}
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	sqlStr += "]) AS x(t0, t1) WHERE NOT EXISTS (SELECT 1 FROM exception WHERE t0 <<= ip)) " +
+		"INSERT INTO reputation (ip, reputation) SELECT x.t0, x.t1 FROM x " +
+		"ON CONFLICT (ip) DO UPDATE SET reputation = " +
+		"GREATEST(0, LEAST(excluded.reputation, reputation.reputation - (100 - excluded.reputation)));"
 
 	log.Debugf("sql: %s %s", sqlStr, vals)
 	_, err := exec(sqlStr, vals...)
@@ -194,7 +250,10 @@ func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) VALUES ($1, $2);", entry.IP, entry.Reputation)
+	_, err := exec("INSERT INTO reputation (ip, reputation) "+
+		"SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
+		entry.IP, entry.Reputation)
+
 	if pqErr, ok := err.(*pq.Error); ok {
 		switch pqErr.Code {
 		case pgCheckViolationErrorCode:
@@ -206,7 +265,7 @@ func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	return err
 }
 
-// UpdateReputationEntry updated a single ReputationEntry on the database
+// UpdateReputationEntry updates a single ReputationEntry on the database
 func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	exec := db.Exec
 	if tx != nil {
@@ -246,4 +305,72 @@ func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	}
 	_, err := exec("DELETE FROM reputation WHERE ip = $1;", entry.IP)
 	return err
+}
+
+// InsertOrUpdateExceptionEntry inserts a single ExceptionEntry into the database, and if it already exists, it updates it
+func (db DB) InsertOrUpdateExceptionEntry(tx *sql.Tx, entry ExceptionEntry) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	var nt pq.NullTime
+	// If the entry has no expiry set, insert it as a NULL (no expiry)
+	if !entry.Expires.IsZero() {
+		nt.Valid = true
+		nt.Time = entry.Expires
+	}
+	_, err := exec("INSERT INTO exception (ip, modified, expires, creator) VALUES ($1, now(), $2, $3) "+
+		"ON CONFLICT (ip, creator) DO UPDATE SET expires = $2, modified = now();",
+		entry.IP, nt, entry.Creator)
+	return err
+}
+
+// DeleteExceptionCreatorType removes all exceptions in the exception table that have been created
+// by a specific exception source type. For example, if creatorType is file then the function will
+// remove any exception created by any file based exception source.
+func (db DB) DeleteExceptionCreatorType(tx *sql.Tx, creatorType string) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	creatorType = creatorType + "%"
+	_, err := exec("DELETE FROM exception WHERE creator LIKE $1", creatorType)
+	return err
+}
+
+// DeleteExpiredExceptions removes any exception from the exception table that has expired
+func (db DB) DeleteExpiredExceptions(tx *sql.Tx) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	_, err := exec("DELETE FROM exception WHERE expires IS NOT NULL AND expires < now();")
+	return err
+}
+
+// SelectMatchingExceptions returns any exceptions that apply to IP, or an empty slice if
+// none were found.
+func (db DB) SelectMatchingExceptions(ip string) (ret []ExceptionEntry, err error) {
+	rows, err := db.Query("SELECT ip, modified, expires, creator FROM exception "+
+		"WHERE $1 <<= ip", ip)
+	if err != nil {
+		return
+	}
+	for rows.Next() {
+		var (
+			nt  pq.NullTime
+			ent ExceptionEntry
+		)
+		err = rows.Scan(&ent.IP, &ent.Modified, &nt, &ent.Creator)
+		if err != nil {
+			rows.Close()
+			return
+		}
+		if nt.Valid {
+			ent.Expires = nt.Time
+		}
+		ret = append(ret, ent)
+	}
+	err = rows.Err()
+	return
 }

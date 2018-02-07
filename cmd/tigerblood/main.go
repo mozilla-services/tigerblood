@@ -1,26 +1,26 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
+	"fmt"
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/bmhatfield/go-runtime-metrics/collector"
-	"github.com/spf13/viper"
-	"go.mozilla.org/tigerblood"
 	"github.com/peterbourgon/g2s"
-	"fmt"
-	"time"
-	"strconv"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
+	"go.mozilla.org/mozlogrus"
+	"go.mozilla.org/tigerblood"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func printConfig() {
 	var fields = log.Fields{}
 	for key, value := range viper.AllSettings() {
 		switch key {
-		case "credentials":  // skip sensitive keys
+		case "credentials": // skip sensitive keys
 		case "dsn":
 		default:
 			fields[key] = value
@@ -154,6 +154,43 @@ func loadViolationPenalties() map[string]uint {
 	return penalties
 }
 
+func loadExceptions() {
+	if !viper.IsSet("EXCEPTIONS") {
+		return
+	}
+
+	for _, kv := range strings.Split(viper.GetString("EXCEPTIONS"), ",") {
+		var ed, ec string
+		tmp := strings.Split(kv, "=")
+		if len(tmp) == 0 {
+			continue
+		}
+		ed = tmp[0]
+		if len(tmp) > 1 {
+			ec = tmp[1]
+		}
+		switch ed {
+		case "file":
+			// Configuration is just the path to the file containing the
+			// address list
+			log.Printf("Adding exception source file %s", ec)
+			err := tigerblood.AddFileException(ec)
+			if err != nil {
+				log.Fatalf("Error adding file exception: %s", err)
+			}
+		case "aws":
+			// No configuration
+			log.Print("Adding exception source AWS public address data")
+			err := tigerblood.AddAWSException()
+			if err != nil {
+				log.Fatalf("Error adding AWS exception: %s", err)
+			}
+		default:
+			log.Fatalf("Invalid exception source type %s", ed)
+		}
+	}
+}
+
 func main() {
 	mozlogrus.Enable("tigerblood")
 	loadConfig()
@@ -169,6 +206,12 @@ func main() {
 
 	tigerblood.SetDB(loadDB())
 
+	loadExceptions()
+	err := tigerblood.InitializeExceptions()
+	if err != nil {
+		log.Fatalf("Error initializing exception sources: %s", err)
+	}
+
 	if viper.IsSet("STATSD_ADDR") {
 		tigerblood.SetStatsdClient(loadStatsd())
 	} else {
@@ -181,7 +224,7 @@ func main() {
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
 
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
-	err := http.ListenAndServe(
+	err = http.ListenAndServe(
 		viper.GetString("BIND_ADDR"),
 		tigerblood.HandleWithMiddleware(tigerblood.NewRouter(), middleware))
 	log.Fatal(err)

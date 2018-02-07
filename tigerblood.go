@@ -14,6 +14,7 @@ var violationPenalties map[string]uint
 var violationPenaltiesJSON []byte
 var useProfileHandlers = false
 var maxEntries = int(100)
+var exceptionSources []exceptionSource
 
 func init() {
 	mozlogrus.Enable("tigerblood")
