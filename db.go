@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.mozilla.org/mozlogrus"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,6 +43,8 @@ var ErrNoRowsAffected = fmt.Errorf("No rows affected")
 type DB struct {
 	*sql.DB
 	reputationSelectStmt *sql.Stmt
+	closeNotify          chan bool
+	wait                 *sync.WaitGroup
 }
 
 // ReputationEntry an (IP, Reputation) entry
@@ -65,6 +68,8 @@ type ExceptionEntry struct {
 }
 
 func checkConnection(db *DB) {
+	db.wait.Add(1)
+	defer db.wait.Done()
 	for {
 		var one uint
 		err := db.QueryRow("SELECT 1").Scan(&one)
@@ -74,7 +79,11 @@ func checkConnection(db *DB) {
 		if one != 1 {
 			log.Fatal("Apparently the database doesn't know the meaning of one anymore. Crashing.")
 		}
-		time.Sleep(10 * time.Second)
+		select {
+		case <-db.closeNotify:
+			return
+		case <-time.After(10 * time.Second):
+		}
 	}
 }
 
@@ -93,7 +102,9 @@ func NewDB(dsn string) (*DB, error) {
 	db.SetConnMaxLifetime(0) // don't timeout
 
 	newDB := &DB{
-		DB: db,
+		DB:          db,
+		closeNotify: make(chan bool, 1),
+		wait:        &sync.WaitGroup{},
 	}
 	err = newDB.CreateTables()
 	if err != nil {
@@ -142,6 +153,8 @@ TRUNCATE TABLE exception;
 
 // Close closes the database
 func (db DB) Close() error {
+	db.closeNotify <- true
+	db.wait.Wait()
 	err := db.reputationSelectStmt.Close()
 	if err != nil {
 		return err
