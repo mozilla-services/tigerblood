@@ -22,6 +22,8 @@ func TestReadReputationInvalidIP(t *testing.T) {
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	h.ServeHTTP(&recorder, httptest.NewRequest("GET", "/2472814.124981275", nil))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestReadReputationValidIP(t *testing.T) {
@@ -41,6 +43,8 @@ func TestReadReputationValidIP(t *testing.T) {
 	h.ServeHTTP(&recorder, httptest.NewRequest("GET", "/127.0.0.1", nil))
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Nil(t, err)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestReadReputationNoEntry(t *testing.T) {
@@ -49,7 +53,7 @@ func TestReadReputationNoEntry(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
 		IP:         "127.0.0.0/8",
@@ -62,6 +66,8 @@ func TestReadReputationNoEntry(t *testing.T) {
 	h.ServeHTTP(&recorder, httptest.NewRequest("GET", "/255.0.0.1", nil))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 	assert.Nil(t, err)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestCreateEntry(t *testing.T) {
@@ -70,7 +76,7 @@ func TestCreateEntry(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
@@ -85,6 +91,8 @@ func TestCreateEntry(t *testing.T) {
 	recorder = httptest.ResponseRecorder{}
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
 	assert.Equal(t, http.StatusConflict, recorder.Code)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestCreateEntryNoDB(t *testing.T) {
@@ -102,13 +110,15 @@ func TestCreateEntryInvalidJson(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestCreateEntryInvalidIP(t *testing.T) {
@@ -117,13 +127,15 @@ func TestCreateEntryInvalidIP(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1 -- SELECT(2)", "reputation": 200}`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestCreateEntryInvalidReputation(t *testing.T) {
@@ -132,13 +144,15 @@ func TestCreateEntryInvalidReputation(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 200}`)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	assert.Nil(t, err)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestUpdateEntry(t *testing.T) {
@@ -147,7 +161,7 @@ func TestUpdateEntry(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
@@ -161,6 +175,8 @@ func TestUpdateEntry(t *testing.T) {
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(25), entry.Reputation)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestUpdateEntryInvalidJson(t *testing.T) {
@@ -169,12 +185,14 @@ func TestUpdateEntryInvalidJson(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": `)))
 	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestUpdateEntryNoDB(t *testing.T) {
@@ -192,7 +210,7 @@ func TestDeleteEntry(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	db.emptyReputationTable()
+	db.EmptyTables()
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
@@ -203,6 +221,8 @@ func TestDeleteEntry(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.NotNil(t, err)
+
+	assert.Nil(t, db.Close())
 }
 
 func TestDeleteEntryNoDB(t *testing.T) {

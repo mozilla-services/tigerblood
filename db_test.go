@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"testing"
+	"time"
 )
 
 var testDB *DB
@@ -20,6 +21,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	defer testDB.Close()
+	exceptionTestHook = true
 	os.Exit(m.Run())
 }
 
@@ -62,7 +64,7 @@ func randomCidr(minSubnet, maxSubnet uint) string {
 }
 
 func BenchmarkInsertion(b *testing.B) {
-	err := testDB.emptyReputationTable()
+	err := testDB.EmptyTables()
 	assert.Nil(b, err)
 	b.RunParallel(func(pb *testing.PB) {
 		var ip [1000]string
@@ -92,7 +94,7 @@ func BenchmarkInsertion(b *testing.B) {
 }
 
 func BenchmarkSelection(b *testing.B) {
-	err := testDB.emptyReputationTable()
+	err := testDB.EmptyTables()
 	assert.Nil(b, err)
 	tx, err := testDB.Begin()
 	assert.Nil(b, err)
@@ -122,7 +124,7 @@ func BenchmarkSelection(b *testing.B) {
 }
 
 func TestUpdate(t *testing.T) {
-	assert.Nil(t, testDB.emptyReputationTable())
+	assert.Nil(t, testDB.EmptyTables())
 	assert.NotNil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
 	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
 	assert.Nil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
@@ -132,7 +134,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	assert.Nil(t, testDB.emptyReputationTable())
+	assert.Nil(t, testDB.EmptyTables())
 	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
 	assert.Nil(t, testDB.DeleteReputationEntry(nil, ReputationEntry{IP: "192.168.0.1"}))
 	_, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -168,4 +170,79 @@ func TestInsertOrUpdateReputationPenalties(t *testing.T) {
 	assert.Equal(t, uint(0), entry.Reputation)
 
 	assert.Nil(t, testDB.EmptyTables())
+}
+
+func TestExceptionUpdate(t *testing.T) {
+	assert.Nil(t, testDB.EmptyTables())
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.5.0/24",
+		Creator: "file:/test",
+	}))
+	ret, err := testDB.SelectMatchingExceptions("10.0.0.5")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(ret))
+	ret, err = testDB.SelectMatchingExceptions("10.0.5.5")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(ret))
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.0.0/8",
+		Creator: "file:/test2",
+	}))
+	ret, err = testDB.SelectMatchingExceptions("10.0.5.10")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(ret))
+	oldts := ret[1].Modified
+	// Add same exception again for update
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.0.0/8",
+		Creator: "file:/test2",
+	}))
+	ret, err = testDB.SelectMatchingExceptions("10.0.5.10")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(ret))
+	assert.NotEqual(t, oldts, ret[1].Modified)
+}
+
+func TestExceptionUpdateBad(t *testing.T) {
+	assert.Nil(t, testDB.EmptyTables())
+	assert.NotNil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "1.2.3.4/40",
+		Creator: "file:/test",
+	}))
+}
+
+func TestDeleteExpiredExceptions(t *testing.T) {
+	assert.Nil(t, testDB.EmptyTables())
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.0.0/8",
+		Creator: "file:/test2",
+		Expires: time.Now().Add(-1 * (time.Minute * 60)),
+	}))
+	ret, err := testDB.SelectMatchingExceptions("10.20.0.50")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(ret))
+	assert.Nil(t, testDB.DeleteExpiredExceptions(nil))
+	ret, err = testDB.SelectMatchingExceptions("10.20.0.50")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(ret))
+}
+
+func TestDeleteExceptionCreatorType(t *testing.T) {
+	assert.Nil(t, testDB.EmptyTables())
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.0.0/8",
+		Creator: "file:/test2",
+		Expires: time.Now().Add(-1 * (time.Minute * 60)),
+	}))
+	ret, err := testDB.SelectMatchingExceptions("10.20.0.50")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(ret))
+	assert.Nil(t, testDB.DeleteExceptionCreatorType(nil, "invalid"))
+	ret, err = testDB.SelectMatchingExceptions("10.20.0.50")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(ret))
+	assert.Nil(t, testDB.DeleteExceptionCreatorType(nil, "file"))
+	ret, err = testDB.SelectMatchingExceptions("10.20.0.50")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(ret))
 }

@@ -54,7 +54,7 @@ func TestInsertReputationByViolation(t *testing.T) {
 	assert.Nil(t, err)
 
 	testViolations := map[string]uint{
-		"Test:Violation": 90,
+		"Test:Violation":      90,
 		"Test:Violation.name": 90,
 	}
 
@@ -99,6 +99,8 @@ func TestInsertReputationByViolation(t *testing.T) {
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations////", strings.NewReader(`{"Violation": "UnknownViolation"}`)))
 		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
 	})
+
+	assert.Nil(t, db.Close())
 }
 
 func TestInsertReputationByViolationRequiresDB(t *testing.T) {
@@ -243,6 +245,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
+
+	assert.Nil(t, db.Close())
 }
 
 func TestMultiInsertReputationByViolationRequiresDB(t *testing.T) {
