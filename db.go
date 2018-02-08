@@ -176,22 +176,22 @@ func (db DB) EmptyTables() error {
 }
 
 func (db DB) createReputationTable() error {
-	_, err := db.Query(createReputationTableSQL)
+	_, err := db.Exec(createReputationTableSQL)
 	return err
 }
 
 func (db DB) emptyReputationTable() error {
-	_, err := db.Query(emptyReputationTableSQL)
+	_, err := db.Exec(emptyReputationTableSQL)
 	return err
 }
 
 func (db DB) createExceptionTable() error {
-	_, err := db.Query(createExceptionTableSQL)
+	_, err := db.Exec(createExceptionTableSQL)
 	return err
 }
 
 func (db DB) emptyExceptionTable() error {
-	_, err := db.Query(emptyExceptionTableSQL)
+	_, err := db.Exec(emptyExceptionTableSQL)
 	return err
 }
 
