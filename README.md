@@ -4,7 +4,7 @@ Mozilla's IP-based reputation service.
 
 ## Running the tests
 
-In order to run the tests, you need a local postgresql database listening on port 5432 with a user `tigerblood` (without a password) which has access to a database calles `tigerblood`, and with the `ip4r` extension installed and created..
+In order to run the tests, you need a local postgresql database listening on port 5432 with a user `tigerblood` (without a password) which has access to a database called `tigerblood`, and with the `ip4r` extension installed and created.
 
 If you don't want to install postgres, you can do this from a docker container:
 
@@ -32,6 +32,7 @@ The following configuration options are available:
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
 | VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
+| EXCEPTIONS                 | Exceptions configuration, see Exceptions section of README                               | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | STATSD\_NAMESPACE          | The statsd namespace prefix                                                              | tigerblood.       |
 | PUBLISH\_RUNTIME\_STATS    | true to enable sending go runtime stats to STATSD\_ADDR                                  | false             |
@@ -68,6 +69,23 @@ make run
 
 In order for the reputation to automatically rise back to 100, you need to set up the lambda function in `./tools/decay/`
 
+## Exceptions
+
+To exempt certain subnets from reputation tracking, exceptions can be configured using the `EXCEPTIONS` configuration option.
+
+The exceptions configuration should be comma separated type=config pairs.
+
+```
+"EXCEPTIONS": "file=/path/except1.txt,file=/path/except2.txt,aws="
+```
+
+Two types of exceptions are currently supported, `file` and `aws`.
+
+`file` based exceptions are loaded at startup time from a file containing a list of CIDR specifications, one per line. These
+persist in Tigerblood while the process executes. Configuration for `file` is just the path to the exception file.
+
+The `aws` exception module adds known AWS public IP subnets to the exception list, and are polled periodically. The `aws`
+module has no configuration options, and can be invoked by specifying `aws=` with no configuration parameter.
 
 ## HTTP API
 
