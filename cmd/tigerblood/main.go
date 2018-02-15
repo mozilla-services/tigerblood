@@ -51,7 +51,9 @@ func startRuntimeCollector() {
 func loadConfig() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
-	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 80)
+	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", 75)
+	viper.SetDefault("DATABASE_MAX_IDLE_CONNS", 75)
+	viper.SetDefault("DATABASE_MAXLIFETIME", "0")
 	viper.SetDefault("BIND_ADDR", "127.0.0.1:8080")
 	viper.SetDefault("STATSD_ADDR", "127.0.0.1:8125")
 	viper.SetDefault("STATSD_NAMESPACE", "tigerblood.")
@@ -90,13 +92,14 @@ func loadDB() *tigerblood.DB {
 	if err != nil {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
+
 	db.SetMaxOpenConns(viper.GetInt("DATABASE_MAX_OPEN_CONNS"))
 	db.SetMaxIdleConns(viper.GetInt("DATABASE_MAX_IDLE_CONNS"))
 
 	if viper.GetString("DATABASE_MAXLIFETIME") == "0" {
-		db.SetConnMaxLifetime(time.Duration(0))
+		db.SetConnMaxLifetime(0)
 	} else {
-		lifetime, err := time.ParseDuration(viper.GetString("DATABASE_CONN_MAXLIFETIME"))
+		lifetime, err := time.ParseDuration(viper.GetString("DATABASE_MAXLIFETIME"))
 		if err != nil {
 			db.SetConnMaxLifetime(lifetime)
 		} else {
