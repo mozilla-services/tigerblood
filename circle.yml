@@ -10,6 +10,7 @@ machine:
     GODIST: "go1.9.2.linux-amd64.tar.gz"
     IMPORT_PATH: "go.mozilla.org/tigerblood"
     GWS: "$HOME/.go_workspace"
+    SP: "$GWS/src/$IMPORT_PATH"
     TIGERBLOOD_DSN: "user=tigerblood dbname=tigerblood sslmode=disable"
 dependencies:
   cache_directories:
@@ -17,12 +18,13 @@ dependencies:
   pre:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
     - sudo docker build -f postgres.Dockerfile -t postgres-ip4r .
-    - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
     - "docker tag -f postgres-ip4r ${DOCKERHUB_POSTGRES_REPO}:latest"
-    - "docker push ${DOCKERHUB_POSTGRES_REPO}:latest"
+    - if [[ $CIRCLE_BRANCH = "master" ]]; then "docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS"; fi
+    - if [[ $CIRCLE_BRANCH = "master" ]]; then "docker push ${DOCKERHUB_POSTGRES_REPO}:latest"; fi
     - mkdir -p ~/docker; docker save ${DOCKERHUB_POSTGRES_REPO} > ~/docker/image.tar
-    - mkdir -p "$GWS/src/$IMPORT_PATH/"
-    - cp -rf ./ "$GWS/src/$IMPORT_PATH/"
+    - mkdir -p "$SP"
+    - cp -rf ./ "$SP"
+    - echo 'export GOPATH=$GWS' >> ~/.circlerc
     - >
       printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n'
       "$CIRCLE_SHA1"
@@ -31,12 +33,13 @@ dependencies:
       "$CIRCLE_PROJECT_REPONAME"
       "$CIRCLE_BUILD_URL" > version.json
     - cp version.json $CIRCLE_ARTIFACTS
-    - go get -d
-    - cd cmd/tigerblood && go get -d
-    - CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
-    - docker build -t "app:build" .
+    - cp version.json $SP
+    - cd "$SP" && go get -d
+    - cd "$SP"/cmd/tigerblood && go get -d
+    - cd "$SP" && CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
+    - cd "$SP" && docker build -t "app:build" .
     - test -e $CIRCLE_ARTIFACTS/bin || mkdir -p $CIRCLE_ARTIFACTS/bin
-    - cp tigerblood $CIRCLE_ARTIFACTS/bin/tigerblood-linux-amd64-$CIRCLE_SHA1
+    - cd "$SP" && cp tigerblood $CIRCLE_ARTIFACTS/bin/tigerblood-linux-amd64-$CIRCLE_SHA1
 database:
   override:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
