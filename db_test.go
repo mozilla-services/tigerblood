@@ -178,17 +178,17 @@ func TestExceptionUpdate(t *testing.T) {
 		IP:      "10.0.5.0/24",
 		Creator: "file:/test",
 	}))
-	ret, err := testDB.SelectMatchingExceptions("10.0.0.5")
+	ret, err := testDB.SelectExceptionsContaining("10.0.0.5")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(ret))
-	ret, err = testDB.SelectMatchingExceptions("10.0.5.5")
+	ret, err = testDB.SelectExceptionsContaining("10.0.5.5")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(ret))
 	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
 		IP:      "10.0.0.0/8",
 		Creator: "file:/test2",
 	}))
-	ret, err = testDB.SelectMatchingExceptions("10.0.5.10")
+	ret, err = testDB.SelectExceptionsContaining("10.0.5.10")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(ret))
 	oldts := ret[1].Modified
@@ -197,7 +197,7 @@ func TestExceptionUpdate(t *testing.T) {
 		IP:      "10.0.0.0/8",
 		Creator: "file:/test2",
 	}))
-	ret, err = testDB.SelectMatchingExceptions("10.0.5.10")
+	ret, err = testDB.SelectExceptionsContaining("10.0.5.10")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(ret))
 	assert.NotEqual(t, oldts, ret[1].Modified)
@@ -211,6 +211,38 @@ func TestExceptionUpdateBad(t *testing.T) {
 	}))
 }
 
+func TestExceptionContainedBy(t *testing.T) {
+	assert.Nil(t, testDB.EmptyTables())
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.5.0/24",
+		Creator: "file:/test",
+	}))
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.6.0/24",
+		Creator: "file:/test",
+	}))
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "192.168.0.0/16",
+		Creator: "file:/test",
+	}))
+	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
+		IP:      "10.0.7.0/24",
+		Creator: "file:/test",
+	}))
+	ret, err := testDB.SelectExceptionsContainedBy("10.0.5.0/24")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(ret))
+	ret, err = testDB.SelectExceptionsContainedBy("192.0.0.0/8")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(ret))
+	ret, err = testDB.SelectExceptionsContainedBy("10.0.0.0/8")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(ret))
+	ret, err = testDB.SelectAllExceptions()
+	assert.Nil(t, err)
+	assert.Equal(t, 4, len(ret))
+}
+
 func TestDeleteExpiredExceptions(t *testing.T) {
 	assert.Nil(t, testDB.EmptyTables())
 	assert.Nil(t, testDB.InsertOrUpdateExceptionEntry(nil, ExceptionEntry{
@@ -218,11 +250,11 @@ func TestDeleteExpiredExceptions(t *testing.T) {
 		Creator: "file:/test2",
 		Expires: time.Now().Add(-1 * (time.Minute * 60)),
 	}))
-	ret, err := testDB.SelectMatchingExceptions("10.20.0.50")
+	ret, err := testDB.SelectExceptionsContaining("10.20.0.50")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(ret))
 	assert.Nil(t, testDB.DeleteExpiredExceptions(nil))
-	ret, err = testDB.SelectMatchingExceptions("10.20.0.50")
+	ret, err = testDB.SelectExceptionsContaining("10.20.0.50")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(ret))
 }
@@ -234,15 +266,15 @@ func TestDeleteExceptionCreatorType(t *testing.T) {
 		Creator: "file:/test2",
 		Expires: time.Now().Add(-1 * (time.Minute * 60)),
 	}))
-	ret, err := testDB.SelectMatchingExceptions("10.20.0.50")
+	ret, err := testDB.SelectExceptionsContaining("10.20.0.50")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(ret))
 	assert.Nil(t, testDB.DeleteExceptionCreatorType(nil, "invalid"))
-	ret, err = testDB.SelectMatchingExceptions("10.20.0.50")
+	ret, err = testDB.SelectExceptionsContaining("10.20.0.50")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(ret))
 	assert.Nil(t, testDB.DeleteExceptionCreatorType(nil, "file"))
-	ret, err = testDB.SelectMatchingExceptions("10.20.0.50")
+	ret, err = testDB.SelectExceptionsContaining("10.20.0.50")
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(ret))
 }

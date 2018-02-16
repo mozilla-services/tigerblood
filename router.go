@@ -99,6 +99,12 @@ var routes = Routes{
 		ListViolationsHandler,
 	},
 	Route{
+		"ListExceptions",
+		"GET",
+		"/exceptions",
+		ListExceptionsHandler,
+	},
+	Route{
 		"MultiUpsertReputationByViolation",
 		"PUT",
 		"/violations/",
