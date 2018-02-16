@@ -27,7 +27,9 @@ The following configuration options are available:
 | Option name                | Description                                                                              | Default           |
 |----------------------------|------------------------------------------------------------------------------------------|-------------------|
 | CREDENTIALS                | A map of hawk id-keys.                                                                   | -                 |
-| DATABASE\_MAX\_OPEN\_CONNS | The maximum amount of PostgreSQL database connections tigerblood will open               | 80                |
+| DATABASE\_MAX\_OPEN\_CONNS | The maximum amount of PostgreSQL database connections tigerblood will open               | 75                |
+| DATABASE\_MAX\_IDLE\_CONNS | The maximum number of idle connections to keep open for reuse                            | 75                |
+| DATABASE\_MAXLIFETIME      | Max lifetime per connection, 0 to not expire, or time.Duration to override (e.g., 30m)   | 0                 |
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
