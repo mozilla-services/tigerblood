@@ -195,3 +195,49 @@ func TestValidMixedAuthorizationHawk(t *testing.T) {
 	handler.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
+
+func TestInvalidAuthorizationAPIKeyEmpty(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	req.Header.Set("Authorization", "APIKey ")
+	recorder := httptest.NewRecorder()
+	apicredentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
+	hawkcredentials := map[string]string{"fxa": "foobar"}
+	SetHawkCredentials(hawkcredentials)
+	SetAPIKeyCredentials(apicredentials)
+	SetAuthMask(AuthEnableHawk | AuthEnableAPIKey)
+	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireAuth()})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
+
+func TestInvalidAuthorizationHawkEmpty(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	req.Header.Set("Authorization", "Hawk ")
+	recorder := httptest.NewRecorder()
+	apicredentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
+	hawkcredentials := map[string]string{"fxa": "foobar"}
+	SetHawkCredentials(hawkcredentials)
+	SetAPIKeyCredentials(apicredentials)
+	SetAuthMask(AuthEnableHawk | AuthEnableAPIKey)
+	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireAuth()})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
+
+func TestUnknownAuthorizationMethod(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	// Valid key without correct prefix
+	req.Header.Set("Authorization", "valid_key")
+	recorder := httptest.NewRecorder()
+	apicredentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
+	hawkcredentials := map[string]string{"fxa": "foobar"}
+	SetHawkCredentials(hawkcredentials)
+	SetAPIKeyCredentials(apicredentials)
+	SetAuthMask(AuthEnableHawk | AuthEnableAPIKey)
+	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireAuth()})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
