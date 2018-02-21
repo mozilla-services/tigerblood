@@ -361,9 +361,9 @@ func (db DB) DeleteExpiredExceptions(tx *sql.Tx) error {
 	return err
 }
 
-// SelectMatchingExceptions returns any exceptions that apply to IP, or an empty slice if
+// SelectExceptionsContaining returns any exceptions that apply to IP, or an empty slice if
 // none were found.
-func (db DB) SelectMatchingExceptions(ip string) (ret []ExceptionEntry, err error) {
+func (db DB) SelectExceptionsContaining(ip string) (ret []ExceptionEntry, err error) {
 	rows, err := db.Query("SELECT ip, modified, expires, creator FROM exception "+
 		"WHERE $1 <<= ip", ip)
 	if err != nil {
@@ -386,4 +386,35 @@ func (db DB) SelectMatchingExceptions(ip string) (ret []ExceptionEntry, err erro
 	}
 	err = rows.Err()
 	return
+}
+
+// SelectExceptionsContainedBy returns any exceptions contained within subnet
+func (db DB) SelectExceptionsContainedBy(subnet string) (ret []ExceptionEntry, err error) {
+	rows, err := db.Query("SELECT ip, modified, expires, creator FROM exception "+
+		"WHERE (expires > now() OR expires IS NULL) AND $1 >>= ip", subnet)
+	if err != nil {
+		return
+	}
+	for rows.Next() {
+		var (
+			nt  pq.NullTime
+			ent ExceptionEntry
+		)
+		err = rows.Scan(&ent.IP, &ent.Modified, &nt, &ent.Creator)
+		if err != nil {
+			rows.Close()
+			return
+		}
+		if nt.Valid {
+			ent.Expires = nt.Time
+		}
+		ret = append(ret, ent)
+	}
+	err = rows.Err()
+	return
+}
+
+// SelectAllExceptions returns all active exceptions
+func (db DB) SelectAllExceptions() (ret []ExceptionEntry, err error) {
+	return db.SelectExceptionsContainedBy("0.0.0.0/0")
 }

@@ -77,6 +77,34 @@ func ListViolationsHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write(violationPenaltiesJSON)
 }
 
+// ListExceptionsHandler returns a JSON array of all active exceptions
+func ListExceptionsHandler(w http.ResponseWriter, req *http.Request) {
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	entries, err := db.SelectAllExceptions()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not list exceptions: %s", err)
+		return
+	}
+	if len(entries) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	json, err := json.Marshal(entries)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "exceptions", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(json)
+}
+
 // UpsertReputationByViolationHandler takes a JSON body from the http request
 // and upserts the reputation entry on the database to the reputation
 // given in reputation violation.  The HTTP requests path has to
