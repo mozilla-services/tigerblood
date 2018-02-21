@@ -26,13 +26,15 @@ The following configuration options are available:
 
 | Option name                | Description                                                                              | Default           |
 |----------------------------|------------------------------------------------------------------------------------------|-------------------|
-| CREDENTIALS                | A map of hawk id-keys.                                                                   | -                 |
 | DATABASE\_MAX\_OPEN\_CONNS | The maximum amount of PostgreSQL database connections tigerblood will open               | 75                |
 | DATABASE\_MAX\_IDLE\_CONNS | The maximum number of idle connections to keep open for reuse                            | 75                |
 | DATABASE\_MAXLIFETIME      | Max lifetime per connection, 0 to not expire, or time.Duration to override (e.g., 30m)   | 0                 |
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
+| HAWK_CREDENTIALS           | A map of hawk id-keys.                                                                   | -                 |
+| APIKEY                     | true to enable API key authentication. If true is provided, credentials must be non-empty                                     | -                 |
+| APIKEY_CREDENTIALS         | A map of API key identifier and key values                                               | -                 |
 | VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
 | EXCEPTIONS                 | Exceptions configuration, see Exceptions section of README                               | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
@@ -53,7 +55,7 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
     "DSN": "user=tigerblood dbname=tigerblood sslmode=disable",
     "BIND_ADDR": "127.0.0.1:8080",
     "HAWK": "yes",
-    "CREDENTIALS": {
+    "HAWK_CREDENTIALS": {
         "root": "toor"
     },
     "VIOLATION_PENALTIES": "rate_limit_exceeded=2"
@@ -88,6 +90,11 @@ persist in Tigerblood while the process executes. Configuration for `file` is ju
 
 The `aws` exception module adds known AWS public IP subnets to the exception list, and are polled periodically. The `aws`
 module has no configuration options, and can be invoked by specifying `aws=` with no configuration parameter.
+
+## Authentication
+
+Tigerblood will authenticate requests using either Hawk style authentication, static API keys, or both. The `HAWK` and `APIKEY` configuration values can be used to control this behavior. With static API key authentication, the
+`TIGERBLOOD_APIKEY` header value should be set in the request.
 
 ## HTTP API
 

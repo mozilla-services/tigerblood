@@ -58,6 +58,7 @@ func loadConfig() {
 	viper.SetDefault("STATSD_ADDR", "127.0.0.1:8125")
 	viper.SetDefault("STATSD_NAMESPACE", "tigerblood.")
 	viper.SetDefault("HAWK", false)
+	viper.SetDefault("APIKEY", false)
 	viper.SetDefault("PUBLISH_RUNTIME_STATS", false)
 	viper.SetDefault("RUNTIME_PAUSE_INTERVAL", 10)
 	viper.SetDefault("RUNTIME_CPU", true)
@@ -74,12 +75,22 @@ func loadConfig() {
 	}
 }
 
-func loadCredentials() map[string]string {
-	credentials := viper.GetStringMapString("CREDENTIALS")
+func loadHawkCredentials() map[string]string {
+	credentials := viper.GetStringMapString("HAWK_CREDENTIALS")
 	if len(credentials) == 0 {
 		log.Fatal("Hawk was enabled, but no credentials were found.")
 	} else {
 		log.Printf("Hawk enabled with %d credentials.", len(credentials))
+	}
+	return credentials
+}
+
+func loadAPIKeyCredentials() map[string]string {
+	credentials := viper.GetStringMapString("APIKEY_CREDENTIALS")
+	if len(credentials) == 0 {
+		log.Fatal("API key authentication was enabled, but no credentials were found.")
+	} else {
+		log.Printf("API key authentication enabled with %d credentials.", len(credentials))
 	}
 	return credentials
 }
@@ -199,11 +210,21 @@ func main() {
 	loadConfig()
 	printConfig()
 
-	var middleware []tigerblood.Middleware
+	var (
+		middleware []tigerblood.Middleware
+		authmask   int
+	)
 
 	if viper.GetBool("HAWK") {
-		middleware = append(middleware, tigerblood.RequireHawkAuth(loadCredentials()))
+		tigerblood.SetHawkCredentials(loadHawkCredentials())
+		authmask |= tigerblood.AuthEnableHawk
 	}
+	if viper.GetBool("APIKEY") {
+		tigerblood.SetAPIKeyCredentials(loadAPIKeyCredentials())
+		authmask |= tigerblood.AuthEnableAPIKey
+	}
+	middleware = append(middleware, tigerblood.RequireAuth())
+	tigerblood.SetAuthMask(authmask)
 
 	tigerblood.SetProfileHandlers(viper.GetBool("PROFILE"))
 
@@ -226,6 +247,9 @@ func main() {
 
 	middleware = append(middleware, tigerblood.SetResponseHeaders())
 
+	if authmask == 0 {
+		log.Warn("Warning, authentication is disabled")
+	}
 	log.Printf("Listening on %s", viper.GetString("BIND_ADDR"))
 	err = http.ListenAndServe(
 		viper.GetString("BIND_ADDR"),
