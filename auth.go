@@ -3,12 +3,19 @@ package tigerblood
 import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"strings"
 )
 
 // Bits used in authentication modes bitmask
 const (
 	AuthEnableHawk = 1 << iota
 	AuthEnableAPIKey
+)
+
+const (
+	AuthRequestUnknown = iota
+	AuthRequestAPIKey
+	AuthRequestHawk
 )
 
 // authmodes is a bit mask indicating authentication modes to support and influences the
@@ -48,6 +55,15 @@ func NewAPIKeyData(secrets map[string]string) *APIKeyData {
 	}
 }
 
+func getAuthRequestType(h string) int {
+	if strings.HasPrefix(h, "Hawk ") {
+		return AuthRequestHawk
+	} else if strings.HasPrefix(h, "APIKey ") {
+		return AuthRequestAPIKey
+	}
+	return AuthRequestUnknown
+}
+
 // RequireAuth middleware for validating authentication credentials
 func RequireAuth() Middleware {
 	return func(h http.Handler) http.Handler {
@@ -66,9 +82,10 @@ func RequireAuth() Middleware {
 			}
 
 			success := false
-			if (authModes&AuthEnableAPIKey != 0) && r.Header.Get("TIGERBLOOD_APIKEY") != "" {
+			authtype := getAuthRequestType(r.Header.Get("Authorization"))
+			if (authModes&AuthEnableAPIKey != 0) && authtype == AuthRequestAPIKey {
 				success = APIKeyAuth(r, apiKeyData)
-			} else if authModes&AuthEnableHawk != 0 {
+			} else if authModes&AuthEnableHawk != 0 && authtype == AuthRequestHawk {
 				success = HawkAuth(r, hawkData)
 			}
 			if !success {
@@ -84,12 +101,13 @@ func RequireAuth() Middleware {
 
 // APIKeyAuth authenticates API key based requests, returns true if successful
 func APIKeyAuth(r *http.Request, m *APIKeyData) bool {
-	hdr := r.Header.Get("TIGERBLOOD_APIKEY")
+	hdr := r.Header.Get("Authorization")
 	if hdr == "" {
 		log.WithFields(log.Fields{"errno": APIKeyNotSpecified}).Warnf("apikey: no key specified")
 		return false
 	}
 
+	hdr = strings.TrimPrefix(hdr, "APIKey ")
 	for _, v := range m.credentials {
 		if hdr == v {
 			return true

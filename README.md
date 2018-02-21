@@ -91,11 +91,6 @@ persist in Tigerblood while the process executes. Configuration for `file` is ju
 The `aws` exception module adds known AWS public IP subnets to the exception list, and are polled periodically. The `aws`
 module has no configuration options, and can be invoked by specifying `aws=` with no configuration parameter.
 
-## Authentication
-
-Tigerblood will authenticate requests using either Hawk style authentication, static API keys, or both. The `HAWK` and `APIKEY` configuration values can be used to control this behavior. With static API key authentication, the
-`TIGERBLOOD_APIKEY` header value should be set in the request.
-
 ## HTTP API
 
 Response schema:
@@ -125,7 +120,11 @@ a [Hawk](https://github.com/hueniverse/hawk) authorization header, or with a sta
 
 With hawk, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
 
-If using static API keys, the `TIGERBLOOD_APIKEY` header needs to be set in the request.
+If using static API keys, the `Authorization` header should be set to the API key value prefixed with "APIKey ".
+
+```
+Authorization: APIKey APIKEYVALUE
+```
 
 The configuration defines if hawk authentication is enabled and if API key authentication is enabled. They can be
 used individually, or both. If both methods are enabled, a client needs to only authenticate using one in order for

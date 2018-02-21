@@ -25,7 +25,7 @@ func TestMissingAuthorizationAPIKey(t *testing.T) {
 func TestInvalidAuthorizationAPIKeyEmptyConfig(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
-	req.Header.Set("TIGERBLOOD_APIKEY", "some_invalid_key")
+	req.Header.Set("Authorization", "APIKey some_invalid_key")
 	recorder := httptest.NewRecorder()
 	credentials := make(map[string]string)
 	SetAPIKeyCredentials(credentials)
@@ -38,7 +38,7 @@ func TestInvalidAuthorizationAPIKeyEmptyConfig(t *testing.T) {
 func TestInvalidAuthorizationAPIKeySetConfig(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
-	req.Header.Set("TIGERBLOOD_APIKEY", "some_invalid_key")
+	req.Header.Set("Authorization", "APIKey some_invalid_key")
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
 	SetAPIKeyCredentials(credentials)
@@ -51,7 +51,7 @@ func TestInvalidAuthorizationAPIKeySetConfig(t *testing.T) {
 func TestValidAuthorizationAPIKey(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
-	req.Header.Set("TIGERBLOOD_APIKEY", "valid_key2")
+	req.Header.Set("Authorization", "APIKey valid_key2")
 	recorder := httptest.NewRecorder()
 	credentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
 	SetAPIKeyCredentials(credentials)
@@ -115,7 +115,7 @@ func TestInvalidMixedAuthorizationEmptyConfig(t *testing.T) {
 func TestInvalidMixedAuthorizationAPIKey(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
-	req.Header.Set("TIGERBLOOD_APIKEY", "invalid_key")
+	req.Header.Set("Authorization", "APIKey invalid_key")
 	recorder := httptest.NewRecorder()
 	apicredentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
 	hawkcredentials := map[string]string{"fxa": "foobar"}
@@ -157,7 +157,7 @@ func TestInvalidMixedAuthorizationHawk(t *testing.T) {
 func TestValidMixedAuthorizationAPIKey(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
-	req.Header.Set("TIGERBLOOD_APIKEY", "valid_key2")
+	req.Header.Set("Authorization", "APIKey valid_key2")
 	recorder := httptest.NewRecorder()
 	apicredentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
 	hawkcredentials := map[string]string{"fxa": "foobar"}
