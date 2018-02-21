@@ -82,7 +82,7 @@ func RequireAuth() Middleware {
 	}
 }
 
-// APIKeyAuth authentications API key based requests, returns true if successful
+// APIKeyAuth authenticates API key based requests, returns true if successful
 func APIKeyAuth(r *http.Request, m *APIKeyData) bool {
 	hdr := r.Header.Get("TIGERBLOOD_APIKEY")
 	if hdr == "" {

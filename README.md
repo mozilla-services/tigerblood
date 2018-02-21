@@ -120,7 +120,16 @@ Response schema:
 
 ### Authorization
 
-All requests to the API must be authenticated with a [Hawk](https://github.com/hueniverse/hawk) authorization header. For example, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
+All requests to the API must be authenticated unless authentication has been disabled. This can occur with
+a [Hawk](https://github.com/hueniverse/hawk) authorization header, or with a static API key.
+
+With hawk, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
+
+If using static API keys, the `TIGERBLOOD_APIKEY` header needs to be set in the request.
+
+The configuration defines if hawk authentication is enabled and if API key authentication is enabled. They can be
+used individually, or both. If both methods are enabled, a client needs to only authenticate using one in order for
+the request to be authorized.
 
 ### Endpoints
 `{ip}` should be substituted for a CIDR-notation IP address or network.
