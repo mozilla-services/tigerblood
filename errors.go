@@ -82,6 +82,13 @@ const (
 	// FileNotFound file not found error
 	FileNotFound = iota
 
+	// API key authentication errors
+
+	// APIKeyNotSpecified indicates the header value was not found
+	APIKeyNotSpecified = 70
+	// APIKeyInvalid indicates the key was not a configured credential
+	APIKeyInvalid = iota
+
 	// Unknown errors
 
 	// UnknownError is for generic errors

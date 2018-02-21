@@ -26,13 +26,15 @@ The following configuration options are available:
 
 | Option name                | Description                                                                              | Default           |
 |----------------------------|------------------------------------------------------------------------------------------|-------------------|
-| CREDENTIALS                | A map of hawk id-keys.                                                                   | -                 |
 | DATABASE\_MAX\_OPEN\_CONNS | The maximum amount of PostgreSQL database connections tigerblood will open               | 75                |
 | DATABASE\_MAX\_IDLE\_CONNS | The maximum number of idle connections to keep open for reuse                            | 75                |
 | DATABASE\_MAXLIFETIME      | Max lifetime per connection, 0 to not expire, or time.Duration to override (e.g., 30m)   | 0                 |
 | BIND\_ADDR                 | The host and port tigerblood will listen on for HTTP requests                            | 127.0.0.1:8080    |
 | DSN                        | The PostgreSQL data source name. Mandatory.                                              | -                 |
 | HAWK                       | true to enable Hawk authentication. If true is provided, credentials must be non-empty   | false             |
+| HAWK_CREDENTIALS           | A map of hawk id-keys.                                                                   | -                 |
+| APIKEY                     | true to enable API key authentication. If true is provided, credentials must be non-empty                                     | -                 |
+| APIKEY_CREDENTIALS         | A map of API key identifier and key values                                               | -                 |
 | VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
 | EXCEPTIONS                 | Exceptions configuration, see Exceptions section of README                               | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
@@ -53,7 +55,7 @@ The config file can be JSON, TOML, YAML, HCL, or a Java properties file. Keys do
     "DSN": "user=tigerblood dbname=tigerblood sslmode=disable",
     "BIND_ADDR": "127.0.0.1:8080",
     "HAWK": "yes",
-    "CREDENTIALS": {
+    "HAWK_CREDENTIALS": {
         "root": "toor"
     },
     "VIOLATION_PENALTIES": "rate_limit_exceeded=2"
@@ -113,7 +115,20 @@ Response schema:
 
 ### Authorization
 
-All requests to the API must be authenticated with a [Hawk](https://github.com/hueniverse/hawk) authorization header. For example, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
+All requests to the API must be authenticated unless authentication has been disabled. This can occur with
+a [Hawk](https://github.com/hueniverse/hawk) authorization header, or with a static API key.
+
+With hawk, if you're doing requests with Python's `requests` package, you can use [requests-hawk](https://github.com/mozilla-services/requests-hawk) to generate headers. [The Hawk readme](https://github.com/hueniverse/hawk#implementations) contains information on different implementations for other languages. Request bodies are validated by the server (https://github.com/hueniverse/hawk#payload-validation), but the server does not provide any mechanism for response validation.
+
+If using static API keys, the `Authorization` header should be set to the API key value prefixed with "APIKey ".
+
+```
+Authorization: APIKey APIKEYVALUE
+```
+
+The configuration defines if hawk authentication is enabled and if API key authentication is enabled. They can be
+used individually, or both. If both methods are enabled, a client needs to only authenticate using one in order for
+the request to be authorized.
 
 ### Endpoints
 `{ip}` should be substituted for a CIDR-notation IP address or network.
