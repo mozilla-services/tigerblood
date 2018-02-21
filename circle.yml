@@ -19,8 +19,8 @@ dependencies:
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
     - sudo docker build -f postgres.Dockerfile -t postgres-ip4r .
     - "docker tag -f postgres-ip4r ${DOCKERHUB_POSTGRES_REPO}:latest"
-    - if [[ $CIRCLE_BRANCH = "master" ]]; then "docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS"; fi
-    - if [[ $CIRCLE_BRANCH = "master" ]]; then "docker push ${DOCKERHUB_POSTGRES_REPO}:latest"; fi
+    - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+    - "docker push ${DOCKERHUB_POSTGRES_REPO}:latest"
     - mkdir -p ~/docker; docker save ${DOCKERHUB_POSTGRES_REPO} > ~/docker/image.tar
     - mkdir -p "$SP"
     - cp -rf ./ "$SP"
