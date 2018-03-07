@@ -78,7 +78,7 @@ func (client Client) BanIP(cidr string) (*http.Response, error) {
 		}
 		return resp, nil
 	} else if resp.StatusCode != http.StatusCreated {
-		fmt.Printf("Bad response banning IP:\n%s\n", resp)
+		fmt.Printf("Bad response banning IP:\n%+v\n", resp)
 		return resp, errors.New("Unexpected HTTP Status from POST.")
 	}
 	return resp, nil
