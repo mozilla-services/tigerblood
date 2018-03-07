@@ -24,16 +24,25 @@ rm-db:
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
 
+test-container:
+	docker-compose run test test
+
 coverage:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test -coverprofile=coverage.txt -covermode=atomic
 	sed "s|_$$(pwd)/|./|g" coverage.txt > rel-coverage.txt
 	go tool cover -html=rel-coverage.txt
+
+.env:
+	cp .env.example .env
 
 build:
 	go build ./cmd/tigerblood/
 
 build-cli:
 	go build ./cmd/tigerblood-cli/
+
+build-container: .env
+	docker-compose build
 
 clean-cli:
 	rm -f ./tigerblood-cli
@@ -50,3 +59,6 @@ run:
 		TIGERBLOOD_DATABASE_MAX_IDLE_CONNS=5 \
 		TIGERBLOOD_DATABASE_MAXLIFETIME=24h \
 			./tigerblood --config-file config.yml
+
+run-container: .env
+	docker-compose run web web --config-file config.yml
