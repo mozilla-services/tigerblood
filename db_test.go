@@ -15,8 +15,13 @@ import (
 var testDB *DB
 
 func TestMain(m *testing.M) {
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	if found != true {
+		log.Fatal("TIGERBLOOD_DSN not found in test env.")
+	}
+
 	var err error
-	testDB, err = NewDB("user=tigerblood dbname=tigerblood sslmode=disable")
+	testDB, err = NewDB(dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
