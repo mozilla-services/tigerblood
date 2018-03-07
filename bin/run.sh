@@ -42,6 +42,7 @@ case $1 in
   test-ci)
     cd /go/src/go.mozilla.org/tigerblood
     go test -v -coverprofile=/tmp/coverage.txt -covermode=atomic
+    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage.txt
     ;;
   bash)
     exec "$@"
