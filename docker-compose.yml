@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  db:
+    container_name: postgres-ip4r
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    environment:
+          - POSTGRES_PASSWORD=mysecretpassword
+    ports:
+      - "5432:5432"
+
+  web:
+    image: tigerblood:build
+    build:
+      context: .
+      dockerfile: web.Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DEVELOPMENT=1
+      - TIGERBLOOD_DSN=host=db user=tigerblood dbname=tigerblood password=mysecretpassword sslmode=disable
+    links:
+      - db
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${PWD}/config.yml:/app/config.yml
+    command: web --config-file /app/config.yml
+
+  # basically duplicates web except docker-compose v3 doesn't support
+  # the extend keyword
+  test:
+    image: tigerblood:build
+    build:
+      context: .
+      dockerfile: web.Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DEVELOPMENT=1
+      - TIGERBLOOD_DSN=host=db user=tigerblood dbname=tigerblood password=mysecretpassword sslmode=disable
+    links:
+      - db
+    ports:
+      - "8080:8080"
+    command: test
