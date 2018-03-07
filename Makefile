@@ -1,6 +1,9 @@
 
 .PHONY: loadtest build-db start-db setup-db rm-db run
 
+.env:
+	cp .env.example .env
+
 loadtest:
 	HAWK_ID=root HAWK_KEY=toor locust --host=http://localhost:8000 -f tools/loadtesting/locustfile.py
 
@@ -24,16 +27,13 @@ rm-db:
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
 
-test-container:
+test-container: .env
 	docker-compose run test test
 
 coverage:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test -coverprofile=coverage.txt -covermode=atomic
 	sed "s|_$$(pwd)/|./|g" coverage.txt > rel-coverage.txt
 	go tool cover -html=rel-coverage.txt
-
-.env:
-	cp .env.example .env
 
 build:
 	go build ./cmd/tigerblood/
