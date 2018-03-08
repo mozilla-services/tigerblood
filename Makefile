@@ -33,6 +33,9 @@ build-container: .env
 clean-cli:
 	rm -f ./tigerblood-cli
 
+clean-container:
+	docker-compose rm -sf
+
 build-static:
 	CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
 
