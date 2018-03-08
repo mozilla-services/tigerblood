@@ -4,7 +4,7 @@ Mozilla's IP-based reputation service.
 
 ## Running the tests
 
-Install [docker and docker-compose](https://docs.docker.com/docker-for-mac/install/) then:
+Install [docker](https://docs.docker.com/install/) and [docker-compose](https://docs.docker.com/compose/install/) then:
 
 ```console
 make test-container
