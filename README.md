@@ -4,14 +4,10 @@ Mozilla's IP-based reputation service.
 
 ## Running the tests
 
-In order to run the tests, you need a local postgresql database listening on port 5432 with a user `tigerblood` (without a password) which has access to a database called `tigerblood`, and with the `ip4r` extension installed and created.
-
-If you don't want to install postgres, you can do this from a docker container:
+Install [docker](https://docs.docker.com/install/) and [docker-compose](https://docs.docker.com/compose/install/) then:
 
 ```console
-make build-db start-db
-# wait for db to start
-make setup-db
+make test-container
 ```
 
 ## Healthcheck

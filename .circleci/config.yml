@@ -1,0 +1,91 @@
+version: 2
+jobs:
+  checkout_code:
+    docker:
+      - image: ubuntu:16.04
+    working_directory: ~/tigerblood
+    steps:
+      - run:
+          name: Install essential packages
+          command: |
+            apt-get update && apt-get install -y ca-certificates git
+      - checkout
+      - save_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/tigerblood
+
+  build_test_and_deploy:
+    docker:
+      - image: golang:1.10
+    working_directory: ~/tigerblood
+    steps:
+      - run:
+          name: Install essential packages
+          command: |
+            apt-get update && apt-get install -y ca-certificates git
+      - restore_cache:
+          keys:
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Install Docker
+          command: |
+            set -x
+            VER="17.12.1-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            mv /tmp/docker/* /usr/bin
+      - run:
+          name: Install Docker Compose
+          command: |
+            set -x
+            VER="1.18.0"
+            curl -L https://github.com/docker/compose/releases/download/${VER}/docker-compose-$(uname -s)-$(uname -m) > /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+      - setup_remote_docker:
+          version: 17.11.0-ce
+      - run:
+          name: Build Docker images
+          working_directory: ~/tigerblood
+          command: |
+            make build-container
+      - run:
+          name: Run tests
+          working_directory: ~/tigerblood
+          command: |
+            bin/ci/test.sh
+      - run:
+          name: Push to Dockerhub
+          working_directory: ~/tigerblood
+          command: |
+            # set DOCKER_DEPLOY=true in Circle UI to push to Dockerhub
+            DOCKER_DEPLOY="${DOCKER_DEPLOY:-false}"
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              bin/ci/deploy-dockerhub.sh latest
+            fi
+            if [ -n "${CIRCLE_TAG}" ]; then
+              bin/ci/deploy-dockerhub.sh "$CIRCLE_TAG"
+            fi
+
+workflows:
+  version: 2
+
+  # workflow jobs are _not_ run in tag builds by default
+  # we use filters to whitelist jobs that should be run for tags
+
+  # workflow jobs are run in _all_ branch builds by default
+  # we use filters to blacklist jobs that shouldn't be run for a branch
+  # see: https://circleci.com/docs/2.0/workflows/#git-tag-job-execution
+
+  build-test-deploy:
+    jobs:
+      - checkout_code:
+          filters:
+            tags:
+              only: /.*/
+      - build_test_and_deploy:
+          requires:
+            - checkout_code
+          filters:
+            tags:
+              only: /.*/

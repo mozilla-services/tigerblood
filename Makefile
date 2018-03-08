@@ -1,28 +1,20 @@
 
-.PHONY: loadtest build-db start-db setup-db rm-db run
+.PHONY: loadtest build-db start-db setup-db rm-db run .env version.json
+
+.env:
+	cp .env.example .env
+
+version.json:
+	./bin/write_version_json.sh
 
 loadtest:
 	HAWK_ID=root HAWK_KEY=toor locust --host=http://localhost:8000 -f tools/loadtesting/locustfile.py
 
-build-db:
-	docker build -f postgres.Dockerfile -t postgres-ip4r .
-
-start-db:
-	# create a postgres container bound to port 5432 locally
-	docker run --detach --name postgres-ip4r -p 127.0.0.1:5432:5432 postgres-ip4r
-
-setup-db:
-	# create tigerblood user and database
-	docker exec -ti postgres-ip4r bash -c 'psql -U postgres -c "CREATE ROLE tigerblood WITH LOGIN;"'
-	docker exec -ti postgres-ip4r bash -c 'psql -U postgres -c "CREATE DATABASE tigerblood;"'
-	docker exec -ti postgres-ip4r bash -c 'psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE tigerblood TO tigerblood;"'
-	docker exec -ti postgres-ip4r bash -c 'psql -U postgres tigerblood -c "CREATE EXTENSION ip4r;"'
-
-rm-db:
-	docker rm -f postgres-ip4r
-
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
+
+test-container: .env version.json
+	docker-compose run test test
 
 coverage:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test -coverprofile=coverage.txt -covermode=atomic
@@ -35,8 +27,14 @@ build:
 build-cli:
 	go build ./cmd/tigerblood-cli/
 
+build-container: .env version.json
+	docker-compose build
+
 clean-cli:
 	rm -f ./tigerblood-cli
+
+clean-container:
+	docker-compose rm -sf
 
 build-static:
 	CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' ./cmd/tigerblood/
@@ -50,3 +48,6 @@ run:
 		TIGERBLOOD_DATABASE_MAX_IDLE_CONNS=5 \
 		TIGERBLOOD_DATABASE_MAXLIFETIME=24h \
 			./tigerblood --config-file config.yml
+
+run-container: .env version.json
+	docker-compose run web web --config-file config.yml
