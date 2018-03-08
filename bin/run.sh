@@ -28,7 +28,7 @@ wait_for() {
 
 # Only wait for backend services in development
 # http://stackoverflow.com/a/13864829
-# For example, bin/test.sh sets 'DEVELOPMENT' to something
+# For example, docker-compose.yml sets 'DEVELOPMENT' to 1
 [ ! -z ${DEVELOPMENT+check} ] && wait_for db 5432 && sleep 3
 
 case $1 in
