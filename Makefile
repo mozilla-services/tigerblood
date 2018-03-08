@@ -13,7 +13,7 @@ loadtest:
 test:
 	TIGERBLOOD_DSN="user=tigerblood dbname=tigerblood sslmode=disable" go test
 
-test-container: .env
+test-container: .env version.json
 	docker-compose run test test
 
 coverage:
@@ -27,7 +27,7 @@ build:
 build-cli:
 	go build ./cmd/tigerblood-cli/
 
-build-container: .env
+build-container: .env version.json
 	docker-compose build
 
 clean-cli:
@@ -49,5 +49,5 @@ run:
 		TIGERBLOOD_DATABASE_MAXLIFETIME=24h \
 			./tigerblood --config-file config.yml
 
-run-container: .env
+run-container: .env version.json
 	docker-compose run web web --config-file config.yml
