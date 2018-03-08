@@ -2,6 +2,7 @@
 set -eo pipefail
 
 ## writes a version.json file for the /__version__ endpoint
+# per https://github.com/mozilla-services/Dockerflow/blob/master/docs/version_object.md
 
 # default variables
 : "${CIRCLE_SHA1=$(git rev-parse HEAD)}"

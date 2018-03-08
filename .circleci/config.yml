@@ -45,17 +45,6 @@ jobs:
       - setup_remote_docker:
           version: 17.11.0-ce
       - run:
-          name: Create version.json
-          working_directory: ~/tigerblood
-          command: |
-            # create a version.json per https://github.com/mozilla-services/Dockerflow/blob/master/docs/version_object.md
-            printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' \
-            "$CIRCLE_SHA1" \
-            "$CIRCLE_TAG" \
-            "$CIRCLE_PROJECT_USERNAME" \
-            "$CIRCLE_PROJECT_REPONAME" \
-            "$CIRCLE_BUILD_URL" > version.json
-      - run:
           name: Build Docker images
           working_directory: ~/tigerblood
           command: |
