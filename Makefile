@@ -1,8 +1,11 @@
 
-.PHONY: loadtest build-db start-db setup-db rm-db run
+.PHONY: loadtest build-db start-db setup-db rm-db run .env version.json
 
 .env:
 	cp .env.example .env
+
+version.json:
+	./bin/write_version_json.sh
 
 loadtest:
 	HAWK_ID=root HAWK_KEY=toor locust --host=http://localhost:8000 -f tools/loadtesting/locustfile.py
