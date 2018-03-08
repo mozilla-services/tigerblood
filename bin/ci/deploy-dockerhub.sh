@@ -22,7 +22,7 @@ function retry() {
 }
 
 # configure docker creds
-retry 3  echo "$DOCKER_PASSWORD" | docker login -u="$DOCKER_USERNAME" --password-stdin
+retry 3  echo "$DOCKER_PASS" | docker login -u="$DOCKER_USER" --password-stdin
 
 # docker tag and push git branch to dockerhub
 if [ -n "$1" ]; then
