@@ -13,17 +13,20 @@ func init() {
 
 // IsValidReputationCIDROrIP checks that string can be parsed as a cidr or ip
 func IsValidReputationCIDROrIP(s string) bool {
-	ip, _, err := net.ParseCIDR(s)
+	_, _, err := net.ParseCIDR(s)
 	if err == nil {
 		return true
 	}
 
-	ip = net.ParseIP(s)
-	if ip != nil {
-		return true
-	}
+	return IsValidReputationIP(s)
+}
 
-	return false
+// IsValidReputationIP checks that string can be parsed as an IP address
+func IsValidReputationIP(s string) bool {
+	if net.ParseIP(s) == nil {
+		return false
+	}
+	return true
 }
 
 // IsValidReputation checks if reputation is in [0, 100]
