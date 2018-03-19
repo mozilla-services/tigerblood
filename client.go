@@ -96,3 +96,19 @@ func (client Client) Exceptions() (*http.Response, error) {
 	}
 	return resp, nil
 }
+
+// Reputation requests the reputation score for an IP address
+func (client Client) Reputation(ipaddr string) (*http.Response, error) {
+	req, err := http.NewRequest("GET",
+		strings.TrimRight(client.URL, "/")+"/"+ipaddr, nil)
+	client.AuthRequest(req, []byte{})
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Bad response requesting reputation:\n%+v\n", resp)
+		return resp, errors.New("Unexpected HTTP status from GET.")
+	}
+	return resp, nil
+}
