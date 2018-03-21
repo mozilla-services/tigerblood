@@ -324,17 +324,19 @@ Example: `curl -d '[{"ip": , "Violation": "password-check-rate-limited-exceeded"
 
 Example error response: `{\"EntryIndex\":0,\"Entry\":{\"IP\":\"192.168.0.1\",\"Violation\":\"Unknown\"},\"Msg\":\"Violation type not found\"}`
 
-## CLI API
+## CLI Client
 
-A CLI tool for Ops to ban IPs manually lives in `cmd/tigerblood-cli`.
+A CLI client for tigerblood.
 
-To install it:
+### Install
 
 ```console
 go get -v -u go.mozilla.org/tigerblood/cmd/tigerblood-cli
 ```
 
-Check that it's working:
+### Usage
+
+1. check install succeeded:
 
 ```console
 tigerblood-cli help
@@ -348,7 +350,9 @@ Usage:
 
 Available Commands:
   ban         Ban an IP for the maximum decay period (environment dependent).
+  exceptions  Display current exceptions list.
   help        Help about any command
+  reputation  Request reputation for IP address.
 
 Flags:
       --config string   config file (default is $HOME/.tigerblood-cli.yaml)
@@ -357,8 +361,6 @@ Flags:
 
 Use "tigerblood-cli [command] --help" for more information about a command.
 ```
-
-To ban an IP:
 
 1. Get HAWK creds from the @foxsec team
 1. Export them into your environment e.g.
@@ -369,7 +371,9 @@ export TIGERBLOOD_HAWK_SECRET=toor
 export TIGERBLOOD_URL=http://localhost:8080/
 ```
 
-1. Ban things temporarily:
+#### Banning an IP
+
+1. Ban an IP temporarily:
 
 ```console
 tigerblood-cli ban 0.0.0.0
