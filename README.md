@@ -353,6 +353,7 @@ Available Commands:
   exceptions  Display current exceptions list.
   help        Help about any command
   reputation  Request reputation for IP address.
+  unban       Sets the reputation for an IPv4 CIDR to the maximum (100) to unban an IP.
 
 Flags:
       --config string   config file (default is $HOME/.tigerblood-cli.yaml)
