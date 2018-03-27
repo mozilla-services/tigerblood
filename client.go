@@ -44,10 +44,11 @@ func (client Client) AuthRequest(req *http.Request, body []byte) {
 	req.Header.Set("Authorization", auth.RequestHeader())
 }
 
-func (client Client) BanIP(cidr string) (*http.Response, error) {
+// SetReputation sets the reputation for an IPv4 CIDR to a specific value
+func (client Client) SetReputation(cidr string, reputation uint) (*http.Response, error) {
 	entry := ReputationEntry{
 		IP:         cidr,
-		Reputation: 0,
+		Reputation: reputation,
 	}
 	body, err := json.Marshal(entry)
 	if err != nil {
@@ -75,8 +76,31 @@ func (client Client) BanIP(cidr string) (*http.Response, error) {
 		}
 		return resp, nil
 	} else if resp.StatusCode != http.StatusCreated {
-		fmt.Printf("Bad response banning IP:\n%+v\n", resp)
 		return resp, errors.New("Unexpected HTTP Status from POST.")
+	}
+	return resp, nil
+}
+
+// BanIP sets the reputation for an IPv4 CIDR to 0 to block it for the maximum decay period
+func (client Client) BanIP(cidr string) (*http.Response, error) {
+	resp, error := client.SetReputation(cidr, 0)
+	if error == errors.New("Unexpected HTTP Status from POST.") {
+		fmt.Printf("Bad response banning IP:\n%+v\n", resp)
+		return resp, error
+	} else if error != nil {
+		return resp, error
+	}
+	return resp, nil
+}
+
+
+// UnbanIP sets the reputation for an IPv4 CIDR to 100 to immediately unblock it
+func (client Client) UnbanIP(cidr string) (*http.Response, error) {
+	resp, error := client.SetReputation(cidr, 0)
+	if error == errors.New("Unexpected HTTP Status from POST.") {
+		fmt.Printf("Bad response unbanning IP:\n%+v\n", resp)
+	} else if error != nil {
+		return resp, error
 	}
 	return resp, nil
 }
