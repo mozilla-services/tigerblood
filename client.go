@@ -102,7 +102,7 @@ func (client Client) BanIP(cidr string) (*http.Response, error) {
 
 // UnbanIP sets the reputation for an IPv4 CIDR to 100 to immediately unblock it
 func (client Client) UnbanIP(cidr string) (*http.Response, error) {
-	resp, error := client.SetReputation(cidr, 0)
+	resp, error := client.SetReputation(cidr, 100)
 	if error == ClientUnexpectedPOSTStatusError {
 		fmt.Printf("Bad response unbanning IP:\n%+v\n", resp)
 	} else if error != nil {
