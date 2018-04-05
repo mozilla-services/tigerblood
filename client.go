@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -85,6 +86,37 @@ func (client Client) SetReputation(cidr string, reputation uint, rev bool) (*htt
 		return resp, nil
 	} else if resp.StatusCode != http.StatusCreated {
 		return resp, ClientUnexpectedPOSTStatusError
+	}
+	return resp, nil
+}
+
+// SetReviewed sets the review flag for a given CIDR to status
+func (client Client) SetReviewed(cidr string, status bool) (*http.Response, error) {
+	resp, err := client.Reputation(cidr)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var r ReputationEntry
+	err = json.Unmarshal(buf, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	r.Reviewed = status
+	buf, err = json.Marshal(r)
+
+	req, err := http.NewRequest("PUT", client.URL+cidr, bytes.NewReader(buf))
+	client.AuthRequest(req, buf)
+	resp, err = client.Do(req)
+	if err != nil {
+		return resp, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return resp, ClientUnexpectedPUTStatusError
 	}
 	return resp, nil
 }
