@@ -289,7 +289,7 @@ func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 		exec = tx.Exec
 	}
 	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
-		"SELECT $1, $2, $3WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
+		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
 		entry.IP, entry.Reputation, entry.Reviewed)
 
 	if pqErr, ok := err.(*pq.Error); ok {
