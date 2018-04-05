@@ -108,8 +108,14 @@ func (client Client) SetReviewed(cidr string, status bool) (*http.Response, erro
 
 	r.Reviewed = status
 	buf, err = json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequest("PUT", client.URL+cidr, bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
 	client.AuthRequest(req, buf)
 	resp, err = client.Do(req)
 	if err != nil {
