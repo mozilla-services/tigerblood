@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	ClientUnexpectedGETStatusError = errors.New("Unexpected HTTP status from GET.")
-	ClientUnexpectedPUTStatusError = errors.New("Unexpected HTTP Status from PUT")
+	ClientUnexpectedGETStatusError  = errors.New("Unexpected HTTP status from GET.")
+	ClientUnexpectedPUTStatusError  = errors.New("Unexpected HTTP Status from PUT")
 	ClientUnexpectedPOSTStatusError = errors.New("Unexpected HTTP Status from POST")
 )
 
@@ -50,11 +50,13 @@ func (client Client) AuthRequest(req *http.Request, body []byte) {
 	req.Header.Set("Authorization", auth.RequestHeader())
 }
 
-// SetReputation sets the reputation for an IPv4 CIDR to a specific value
-func (client Client) SetReputation(cidr string, reputation uint) (*http.Response, error) {
+// SetReputation sets the reputation for an IPv4 CIDR to a specific value. If rev is set to
+// true, the reputation entry also has it's reviewed flag set to true in the database.
+func (client Client) SetReputation(cidr string, reputation uint, rev bool) (*http.Response, error) {
 	entry := ReputationEntry{
 		IP:         cidr,
 		Reputation: reputation,
+		Reviewed:   rev,
 	}
 	body, error := json.Marshal(entry)
 	if error != nil {
@@ -89,7 +91,8 @@ func (client Client) SetReputation(cidr string, reputation uint) (*http.Response
 
 // BanIP sets the reputation for an IPv4 CIDR to 0 to block it for the maximum decay period
 func (client Client) BanIP(cidr string) (*http.Response, error) {
-	resp, error := client.SetReputation(cidr, 0)
+	// Since this is being applied from the ban command, set reviewed to true
+	resp, error := client.SetReputation(cidr, 0, true)
 	if error == ClientUnexpectedPOSTStatusError {
 		fmt.Printf("Bad response banning IP:\n%+v\n", resp)
 		return resp, error
@@ -99,10 +102,9 @@ func (client Client) BanIP(cidr string) (*http.Response, error) {
 	return resp, nil
 }
 
-
 // UnbanIP sets the reputation for an IPv4 CIDR to 100 to immediately unblock it
 func (client Client) UnbanIP(cidr string) (*http.Response, error) {
-	resp, error := client.SetReputation(cidr, 100)
+	resp, error := client.SetReputation(cidr, 100, false)
 	if error == ClientUnexpectedPOSTStatusError {
 		fmt.Printf("Bad response unbanning IP:\n%+v\n", resp)
 	} else if error != nil {

@@ -57,7 +57,7 @@ var reputationCmd = &cobra.Command{
 			fmt.Printf("Error unmarshaling response:\n%s\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("%v %v\n", r.IP, r.Reputation)
+		fmt.Printf("%v %v %v\n", r.IP, r.Reputation, r.Reviewed)
 	},
 }
 
