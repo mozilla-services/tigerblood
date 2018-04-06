@@ -283,3 +283,47 @@ func TestDeleteExceptionCreatorType(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(ret))
 }
+
+func TestSetReviewedFlag(t *testing.T) {
+	assert.Nil(t, testDB.EmptyTables())
+	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 50}))
+	ret, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, false, ret.Reviewed)
+	noent := ReputationEntry{IP: "10.0.0.1", Reputation: 50}
+	assert.NotNil(t, testDB.SetReviewedFlag(nil, noent, true))
+	assert.Nil(t, testDB.SetReviewedFlag(nil, ret, true))
+	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, true, ret.Reviewed)
+
+	// Verify trigger resets the flag
+	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.6", Reputation: 1}))
+	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.6")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), ret.Reputation)
+	assert.Equal(t, false, ret.Reviewed)
+	assert.Nil(t, testDB.SetReviewedFlag(nil, ret, true))
+	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.6")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), ret.Reputation)
+	assert.Equal(t, true, ret.Reviewed)
+	assert.Nil(t, testDB.UpdateReputationEntry(nil,
+		ReputationEntry{IP: "192.168.0.1", Reputation: 1, Reviewed: true}))
+	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), ret.Reputation)
+	assert.Equal(t, true, ret.Reviewed)
+	// Keep reviewed set to true here to test the trigger action, which would be applied
+	// as a result of the decay function
+	assert.Nil(t, testDB.UpdateReputationEntry(nil,
+		ReputationEntry{IP: "192.168.0.1", Reputation: 100, Reviewed: true}))
+	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(100), ret.Reputation)
+	assert.Equal(t, false, ret.Reviewed)
+	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.6")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(1), ret.Reputation)
+	assert.Equal(t, true, ret.Reviewed)
+}

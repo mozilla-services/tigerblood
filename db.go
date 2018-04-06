@@ -49,8 +49,9 @@ type DB struct {
 
 // ReputationEntry an (IP, Reputation) entry
 type ReputationEntry struct {
-	IP         string
-	Reputation uint
+	IP         string // The IP address for the entry
+	Reputation uint   // The reputation score
+	Reviewed   bool   // True if the entry has the reviewed flag set
 }
 
 // IPViolationEntry an (IP, Violation) where Violation is the violation type name
@@ -110,7 +111,8 @@ func NewDB(dsn string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Could not create tables: %s", err)
 	}
-	reputationSelectStmt, err := db.Prepare("SELECT ip, reputation FROM reputation WHERE ip >>= $1 " +
+	reputationSelectStmt, err := db.Prepare("SELECT ip, reputation, reviewed FROM " +
+		"reputation WHERE ip >>= $1 " +
 		"AND NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip) " +
 		"ORDER BY @ ip LIMIT 1;")
 	if err != nil {
@@ -124,12 +126,34 @@ func NewDB(dsn string) (*DB, error) {
 	return newDB, nil
 }
 
+// Creates the reputation table (or modifies it to match the schema we want). Done in a few
+// steps here to support migration of the schema from older to newer versions.
 const createReputationTableSQL = `
 CREATE TABLE IF NOT EXISTS reputation (
 ip ip4r PRIMARY KEY NOT NULL,
 reputation int NOT NULL CHECK (reputation >= 0 AND reputation <= 100)
 );
 CREATE INDEX IF NOT EXISTS reputation_ip_idx ON reputation USING gist (ip);
+
+DO $$
+	BEGIN
+		ALTER TABLE reputation ADD COLUMN reviewed boolean DEFAULT false;
+	EXCEPTION
+		WHEN duplicate_column THEN -- ignore error
+	END;
+$$;
+
+CREATE OR REPLACE FUNCTION reviewed_reset() RETURNS TRIGGER AS $$
+	BEGIN
+		NEW.reviewed = false;
+		RETURN NEW;
+	END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS check_reviewed ON reputation;
+CREATE TRIGGER check_reviewed BEFORE UPDATE ON reputation
+	FOR EACH ROW WHEN (NEW.reputation = 100)
+	EXECUTE PROCEDURE reviewed_reset();
 `
 
 const createExceptionTableSQL = `
@@ -214,9 +238,10 @@ func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) er
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) "+
-		"SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip)"+
-		"ON CONFLICT (ip) DO UPDATE SET reputation = $2;", entry.IP, entry.Reputation)
+	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
+		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip)"+
+		"ON CONFLICT (ip) DO UPDATE SET reputation = $2, reviewed = $3;", entry.IP,
+		entry.Reputation, entry.Reviewed)
 	return err
 }
 
@@ -263,9 +288,9 @@ func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation) "+
-		"SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
-		entry.IP, entry.Reputation)
+	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
+		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
+		entry.IP, entry.Reputation, entry.Reviewed)
 
 	if pqErr, ok := err.(*pq.Error); ok {
 		switch pqErr.Code {
@@ -284,7 +309,8 @@ func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	if tx != nil {
 		exec = tx.Exec
 	}
-	result, err := exec("UPDATE reputation SET reputation = $2 WHERE ip = $1 RETURNING ip;", entry.IP, entry.Reputation)
+	result, err := exec("UPDATE reputation SET reputation = $2, reviewed = $3 WHERE ip = $1 RETURNING ip;",
+		entry.IP, entry.Reputation, entry.Reviewed)
 	if pqErr, ok := err.(*pq.Error); ok {
 		if pqErr.Code == pgCheckViolationErrorCode {
 			return CheckViolationError{pqErr}
@@ -306,7 +332,7 @@ func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 // SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.
 func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	var entry ReputationEntry
-	err := db.reputationSelectStmt.QueryRow(ip).Scan(&entry.IP, &entry.Reputation)
+	err := db.reputationSelectStmt.QueryRow(ip).Scan(&entry.IP, &entry.Reputation, &entry.Reviewed)
 	return entry, err
 }
 
@@ -417,4 +443,24 @@ func (db DB) SelectExceptionsContainedBy(subnet string) (ret []ExceptionEntry, e
 // SelectAllExceptions returns all active exceptions
 func (db DB) SelectAllExceptions() (ret []ExceptionEntry, err error) {
 	return db.SelectExceptionsContainedBy("0.0.0.0/0")
+}
+
+// SetReviewedFlag sets the reviewed boolean flag on a reputation entry in the database
+func (db DB) SetReviewedFlag(tx *sql.Tx, entry ReputationEntry, f bool) error {
+	exec := db.Exec
+	if tx != nil {
+		exec = tx.Exec
+	}
+	res, err := exec("UPDATE reputation SET reviewed = $1 WHERE ip = $2;", f, entry.IP)
+	if err != nil {
+		return err
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return fmt.Errorf("Request affected 0 reputation entries")
+	}
+	return nil
 }
