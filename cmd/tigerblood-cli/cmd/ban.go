@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -17,7 +16,7 @@ import (
 var banCmd = &cobra.Command{
 	Use:   "ban",
 	Short: "Ban an IP for the maximum decay period (environment dependent).",
-	Long: `Sets the reputation for an IPv4 CIDR to 0.`,
+	Long:  `Sets the reputation for an IPv4 CIDR to 0.`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return errors.New("requires at least one CIDR")
@@ -45,7 +44,7 @@ var banCmd = &cobra.Command{
 			fmt.Printf("Error banning IP:\n%s\n", err)
 			os.Exit(1)
 		} else if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
-			fmt.Printf("Banned %s on %s\n %s", cidr, url)
+			fmt.Printf("Banned %s on %s\n", cidr, url)
 		} else {
 			fmt.Printf("Bad response banning IP:\n%s\n", resp)
 			os.Exit(1)
