@@ -89,7 +89,9 @@ module has no configuration options, and can be invoked by specifying `aws=` wit
 
 ## HTTP API
 
-Response schema:
+### Response schema
+
+#### Reputation
 
 ```json
 {
@@ -100,11 +102,41 @@ Response schema:
     },
     "Reputation": {
       "type": "integer"
+    },
+    "Reviewed": {
+      "type": "boolean"
     }
   },
   "required": [
     "IP",
     "Reputation"
+  ]
+}
+```
+
+#### Exception
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "IP": {
+      "type": "string"
+    },
+    "Creator": {
+      "type": "string"
+    },
+    "Modified": {
+      "type": "date-time"
+    },
+    "Expires": {
+      "type": "date-time"
+    }
+  },
+  "required": [
+    "IP",
+    "Creator",
+    "Modified"
   ]
 }
 ```
@@ -353,6 +385,7 @@ Available Commands:
   exceptions  Display current exceptions list.
   help        Help about any command
   reputation  Request reputation for IP address.
+  reviewed    Change reviewed status.
   unban       Sets the reputation for an IPv4 CIDR to the maximum (100) to unban an IP.
 
 Flags:
@@ -374,8 +407,35 @@ export TIGERBLOOD_URL=http://localhost:8080/
 
 #### Banning an IP
 
-1. Ban an IP temporarily:
+Sets the reputation for an IP to 0 banning it temporarily, and immediately marks
+the reputation entry as reviewed.
 
 ```console
 tigerblood-cli ban 0.0.0.0
+```
+
+#### Unbanning an IP
+
+Restores the reputation for an IP to 100.
+
+```console
+tigerblood-cli unban 0.0.0.0
+```
+
+#### Get reputation for an IP
+
+Query the reputation for an IP, returns a 404 if unknown, otherwise returns the
+reputation score and a boolean flag indicating if the reviewed flag is set.
+
+```console
+tigerblood-cli reputation 0.0.0.0
+```
+
+#### Mark a reputation entry as reviewed
+
+Toggle the reviewed flag for a given reputation entry which has a score below
+100.
+
+```console
+tigerblood-cli reviewed 0.0.0.0 true
 ```
