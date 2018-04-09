@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -17,7 +16,7 @@ import (
 var unbanCmd = &cobra.Command{
 	Use:   "unban",
 	Short: "Sets the reputation for an IPv4 CIDR to the maximum (100) to unban an IP.",
-	Long: `Sets the reputation for an IPv4 CIDR to 100.`,
+	Long:  `Sets the reputation for an IPv4 CIDR to 100.`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return errors.New("requires at least one CIDR")
@@ -45,7 +44,7 @@ var unbanCmd = &cobra.Command{
 			fmt.Printf("Error unbanning IP:\n%s\n", err)
 			os.Exit(1)
 		} else if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
-			fmt.Printf("Unbanned %s on %s\n %s", cidr, url)
+			fmt.Printf("Unbanned %s on %s\n", cidr, url)
 		} else {
 			fmt.Printf("Bad response unbanning IP:\n%s\n", resp)
 			os.Exit(1)
