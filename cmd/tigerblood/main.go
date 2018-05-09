@@ -158,7 +158,7 @@ func loadViolationPenalties() map[string]uint {
 			continue
 		}
 		if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
-			log.Printf("Skipping invalid violation penalty: %s", parsedPenalty)
+			log.Printf("Skipping invalid violation penalty: %s: %d", violationType, parsedPenalty)
 			continue
 		}
 		penalties[violationType] = uint(parsedPenalty)
