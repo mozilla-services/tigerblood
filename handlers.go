@@ -167,7 +167,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		if errno > 0 {
 			switch errno {
 			case MissingIPError:
-				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, fmt.Sprintf(DescribeErrno(MissingIPError), entry.IP, err))
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, fmt.Sprintf(DescribeErrno(MissingIPError)))
 			case MissingViolations:
 				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, DescribeErrno(MissingViolations))
 			case MissingViolationTypeError:
@@ -213,8 +213,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError),
-			r.URL.Path, err)
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -278,7 +277,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -307,7 +306,7 @@ func DeleteReputationHandler(w http.ResponseWriter, r *http.Request) {
 func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 	ip, err := IPAddressFromHTTPPath(r.URL.Path)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

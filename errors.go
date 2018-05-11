@@ -119,7 +119,7 @@ func DescribeErrno(errno Errno) string {
 
 	switch errno {
 	case MissingIPError:
-		return "Error finding IP parameter in %s: %s"
+		return "Error finding IP parameter"
 	case MissingReputationError:
 		return "Error finding reputation parameter in %s: %s"
 	case MissingViolationTypeError:

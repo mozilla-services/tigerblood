@@ -56,8 +56,7 @@ func IsValidReputationEntry(entry ReputationEntry) bool {
 // and Errno or 0 for no error
 func ValidateIPViolationEntryAndGetPenalty(entry IPViolationEntry) (uint, Errno) {
 	if len(entry.IP) < 1 {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError),
-			entry.IP, "")
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError))
 		return 0, MissingIPError
 	}
 
