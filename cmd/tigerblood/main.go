@@ -112,10 +112,9 @@ func loadDB() *tigerblood.DB {
 	} else {
 		lifetime, err := time.ParseDuration(viper.GetString("DATABASE_MAXLIFETIME"))
 		if err != nil {
-			db.SetConnMaxLifetime(lifetime)
-		} else {
-			log.Warnf("Error parsing conn db max lifetime: %s", err)
+			log.Fatalf("Error parsing conn db max lifetime: %s", err)
 		}
+		db.SetConnMaxLifetime(lifetime)
 	}
 	return db
 }
