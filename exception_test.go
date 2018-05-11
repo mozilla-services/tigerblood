@@ -95,11 +95,11 @@ func TestExceptionApplyOnWriteSingle(t *testing.T) {
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.1.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.1.1", strings.NewReader(`{"IP": "192.168.1.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(20), entry.Reputation)
@@ -114,11 +114,11 @@ func TestExceptionApplyOnWriteSingle(t *testing.T) {
 		Creator: "file:/test",
 	}))
 	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.1.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.1.1", strings.NewReader(`{"IP": "192.168.1.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.NotNil(t, err)
 	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.1.1")
@@ -183,8 +183,8 @@ func TestExceptionApplyOnReadSingle(t *testing.T) {
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(20), entry.Reputation)

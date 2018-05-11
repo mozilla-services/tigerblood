@@ -72,91 +72,6 @@ func TestReadReputationNoEntry(t *testing.T) {
 	assert.Nil(t, db.Close())
 }
 
-func TestCreateEntry(t *testing.T) {
-	recorder := httptest.ResponseRecorder{}
-	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
-	assert.True(t, found)
-	db, err := NewDB(dsn)
-	assert.Nil(t, err)
-	db.EmptyTables()
-
-	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
-
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
-	assert.Nil(t, err)
-	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
-	assert.Nil(t, err)
-	assert.Equal(t, uint(20), entry.Reputation)
-
-	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusConflict, recorder.Code)
-
-	assert.Nil(t, db.Close())
-}
-
-func TestCreateEntryNoDB(t *testing.T) {
-	recorder := httptest.ResponseRecorder{}
-	SetDB(nil)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
-
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
-}
-
-func TestCreateEntryInvalidJson(t *testing.T) {
-	recorder := httptest.ResponseRecorder{}
-	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
-	assert.True(t, found)
-	db, err := NewDB(dsn)
-	assert.Nil(t, err)
-	db.EmptyTables()
-
-	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1`)))
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	assert.Nil(t, err)
-
-	assert.Nil(t, db.Close())
-}
-
-func TestCreateEntryInvalidIP(t *testing.T) {
-	recorder := httptest.ResponseRecorder{}
-	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
-	assert.True(t, found)
-	db, err := NewDB(dsn)
-	assert.Nil(t, err)
-	db.EmptyTables()
-
-	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1 -- SELECT(2)", "reputation": 200}`)))
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	assert.Nil(t, err)
-
-	assert.Nil(t, db.Close())
-}
-
-func TestCreateEntryInvalidReputation(t *testing.T) {
-	recorder := httptest.ResponseRecorder{}
-	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
-	assert.True(t, found)
-	db, err := NewDB(dsn)
-	assert.Nil(t, err)
-	db.EmptyTables()
-
-	SetDB(db)
-	h := HandleWithMiddleware(NewRouter(), []Middleware{})
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 200}`)))
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	assert.Nil(t, err)
-
-	assert.Nil(t, db.Close())
-}
-
 func TestUpdateEntry(t *testing.T) {
 	recorder := httptest.ResponseRecorder{}
 	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
@@ -167,16 +82,20 @@ func TestUpdateEntry(t *testing.T) {
 
 	SetDB(db)
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
-	assert.Equal(t, http.StatusNotFound, recorder.Code)
-	h.ServeHTTP(&recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	recorder = httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1",
+		strings.NewReader(`{"IP": "192.168.0.1", "reputation": 25}`)))
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Nil(t, err)
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(25), entry.Reputation)
+
+	recorder = httptest.ResponseRecorder{}
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 50}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Nil(t, err)
+	entry, err = db.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(50), entry.Reputation)
 
 	assert.Nil(t, db.Close())
 }
@@ -248,8 +167,8 @@ func TestReadReputationReviewed(t *testing.T) {
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 
 	recorder := httptest.NewRecorder()
-	h.ServeHTTP(recorder, httptest.NewRequest("POST", "/", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	h.ServeHTTP(recorder, httptest.NewRequest("PUT", "/192.168.0.1", strings.NewReader(`{"IP": "192.168.0.1", "reputation": 20}`)))
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(20), entry.Reputation)

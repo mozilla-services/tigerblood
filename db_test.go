@@ -37,17 +37,10 @@ func TestCreateSchema(t *testing.T) {
 	assert.Nil(t, err, "Running CreateTables when the tables already exist shouldn't error")
 }
 
-func TestReputationInsertConstraint(t *testing.T) {
-	err := testDB.InsertReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 500})
-	assert.IsType(t, CheckViolationError{}, err)
-	err = testDB.InsertReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 50})
-	assert.Nil(t, err)
-}
-
 func TestReputationUpdateConstraint(t *testing.T) {
-	err := testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 500})
+	err := testDB.InsertOrUpdateReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 500})
 	assert.IsType(t, CheckViolationError{}, err)
-	err = testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 50})
+	err = testDB.InsertOrUpdateReputationEntry(nil, ReputationEntry{IP: "240.0.0.1", Reputation: 50})
 	assert.Nil(t, err)
 }
 
@@ -130,17 +123,21 @@ func BenchmarkSelection(b *testing.B) {
 
 func TestUpdate(t *testing.T) {
 	assert.Nil(t, testDB.EmptyTables())
-	assert.NotNil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
-	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
-	assert.Nil(t, testDB.UpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
+
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
 	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
+	assert.Nil(t, err)
+	assert.Equal(t, uint(0), entry.Reputation)
+
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 1}))
+	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(1), entry.Reputation)
 }
 
 func TestDelete(t *testing.T) {
 	assert.Nil(t, testDB.EmptyTables())
-	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 0}))
 	assert.Nil(t, testDB.DeleteReputationEntry(nil, ReputationEntry{IP: "192.168.0.1"}))
 	_, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.NotNil(t, err)
@@ -286,7 +283,8 @@ func TestDeleteExceptionCreatorType(t *testing.T) {
 
 func TestSetReviewedFlag(t *testing.T) {
 	assert.Nil(t, testDB.EmptyTables())
-	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.1", Reputation: 50}))
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil,
+		ReputationEntry{IP: "192.168.0.1", Reputation: 50}))
 	ret, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
 	assert.Equal(t, false, ret.Reviewed)
@@ -298,7 +296,7 @@ func TestSetReviewedFlag(t *testing.T) {
 	assert.Equal(t, true, ret.Reviewed)
 
 	// Verify trigger resets the flag
-	assert.Nil(t, testDB.InsertReputationEntry(nil, ReputationEntry{IP: "192.168.0.6", Reputation: 1}))
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil, ReputationEntry{IP: "192.168.0.6", Reputation: 1}))
 	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.6")
 	assert.Nil(t, err)
 	assert.Equal(t, uint(1), ret.Reputation)
@@ -308,7 +306,7 @@ func TestSetReviewedFlag(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, uint(1), ret.Reputation)
 	assert.Equal(t, true, ret.Reviewed)
-	assert.Nil(t, testDB.UpdateReputationEntry(nil,
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil,
 		ReputationEntry{IP: "192.168.0.1", Reputation: 1, Reviewed: true}))
 	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)
@@ -316,7 +314,7 @@ func TestSetReviewedFlag(t *testing.T) {
 	assert.Equal(t, true, ret.Reviewed)
 	// Keep reviewed set to true here to test the trigger action, which would be applied
 	// as a result of the decay function
-	assert.Nil(t, testDB.UpdateReputationEntry(nil,
+	assert.Nil(t, testDB.InsertOrUpdateReputationEntry(nil,
 		ReputationEntry{IP: "192.168.0.1", Reputation: 100, Reviewed: true}))
 	ret, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
 	assert.Nil(t, err)

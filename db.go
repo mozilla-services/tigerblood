@@ -232,17 +232,34 @@ func (db DB) emptyExceptionTable() error {
 	return err
 }
 
-// InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, and if it already exists, it updates it
+// InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, or if it already
+// exists it updates it
 func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	exec := db.Exec
 	if tx != nil {
 		exec = tx.Exec
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
+	result, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
 		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip)"+
 		"ON CONFLICT (ip) DO UPDATE SET reputation = $2, reviewed = $3;", entry.IP,
 		entry.Reputation, entry.Reviewed)
-	return err
+
+	if pqErr, ok := err.(*pq.Error); ok {
+		if pqErr.Code == pgCheckViolationErrorCode {
+			return CheckViolationError{pqErr}
+		}
+	}
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNoRowsAffected
+	}
+	return nil
 }
 
 // InsertOrUpdateReputationPenalties applies a reputationPenalty to the
@@ -280,53 +297,6 @@ func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string, reputat
 	log.Debugf("sql: %s %s", sqlStr, vals)
 	_, err := exec(sqlStr, vals...)
 	return err
-}
-
-// InsertReputationEntry inserts a single ReputationEntry into the database
-func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
-	exec := db.Exec
-	if tx != nil {
-		exec = tx.Exec
-	}
-	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
-		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
-		entry.IP, entry.Reputation, entry.Reviewed)
-
-	if pqErr, ok := err.(*pq.Error); ok {
-		switch pqErr.Code {
-		case pgCheckViolationErrorCode:
-			return CheckViolationError{pqErr}
-		case pgDuplicateKeyErrorCode:
-			return DuplicateKeyError{pqErr}
-		}
-	}
-	return err
-}
-
-// UpdateReputationEntry updates a single ReputationEntry on the database
-func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
-	exec := db.Exec
-	if tx != nil {
-		exec = tx.Exec
-	}
-	result, err := exec("UPDATE reputation SET reputation = $2, reviewed = $3 WHERE ip = $1 RETURNING ip;",
-		entry.IP, entry.Reputation, entry.Reviewed)
-	if pqErr, ok := err.(*pq.Error); ok {
-		if pqErr.Code == pgCheckViolationErrorCode {
-			return CheckViolationError{pqErr}
-		}
-	}
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return ErrNoRowsAffected
-	}
-	return nil
 }
 
 // SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.

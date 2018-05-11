@@ -123,12 +123,6 @@ var routes = Routes{
 		ReadReputationHandler,
 	},
 	Route{
-		"CreateReputation",
-		"POST",
-		"/",
-		CreateReputationHandler,
-	},
-	Route{
 		"UpdateReputation",
 		"PUT",
 		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}",
