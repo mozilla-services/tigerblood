@@ -7,7 +7,7 @@ import (
 // Middleware wraps an http.Handler with additional functionality.
 type Middleware func(http.Handler) http.Handler
 
-// HandleWithMiddleware run a request through a stack of middleware then the http.Handler
+// HandleWithMiddleware runs a request through a stack of middleware then the http.Handler
 func HandleWithMiddleware(h http.Handler, adapters []Middleware) http.Handler {
 	// To make the middleware run in the order in which they are specified,
 	// we reverse through them in the Middleware function, rather than just
@@ -27,7 +27,6 @@ type responseHeader struct {
 var DefaultResponseHeaders = []responseHeader{
 	responseHeader{"Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; report-uri /__cspreport__"}, // APP-CSP
 	responseHeader{"Content-Type", "application/json"},                                                                 // APP-NOHTML
-
 	responseHeader{"X-Frame-Options", "DENY"},
 	responseHeader{"X-Content-Type-Options", "nosniff"},
 }
