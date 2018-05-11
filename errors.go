@@ -114,7 +114,7 @@ func DescribeErrno(errno Errno) string {
 	case TooManyIPViolationEntriesError:
 		return "Too many IP, violation objects in request body"
 	case DuplicateIPError:
-		return "Duplicate IP found in multiple entries"
+		return "Duplicate IP found in multiple entries: %s"
 	}
 
 	switch errno {

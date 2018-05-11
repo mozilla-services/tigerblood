@@ -137,18 +137,23 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 	var entries []IPViolationEntry
 	err = json.Unmarshal(body, &entries)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
+		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError),
+			err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if len(entries) < 1 {
-		log.WithFields(log.Fields{"errno": MissingIPViolationEntryError}).Warn(DescribeErrno(MissingIPViolationEntryError))
+		log.WithFields(log.Fields{
+			"errno": MissingIPViolationEntryError,
+		}).Warn(DescribeErrno(MissingIPViolationEntryError))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if len(entries) > maxEntries {
-		log.WithFields(log.Fields{"errno": TooManyIPViolationEntriesError}).Warn(DescribeErrno(TooManyIPViolationEntriesError))
+		log.WithFields(log.Fields{
+			"errno": TooManyIPViolationEntriesError,
+		}).Warn(DescribeErrno(TooManyIPViolationEntriesError))
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -168,23 +173,29 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		if errno > 0 {
 			switch errno {
 			case MissingIPError:
-				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, fmt.Sprintf(DescribeErrno(MissingIPError)))
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest,
+					fmt.Sprintf(DescribeErrno(MissingIPError)))
 			case MissingViolations:
-				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, DescribeErrno(MissingViolations))
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest,
+					DescribeErrno(MissingViolations))
 			case MissingViolationTypeError:
-				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string("Violation type not found"))
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest,
+					fmt.Sprintf(DescribeErrno(MissingViolationTypeError), entry.Violation))
 			case InvalidIPError:
-				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, fmt.Sprintf(DescribeErrno(InvalidIPError), entry.IP))
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest,
+					fmt.Sprintf(DescribeErrno(InvalidIPError), entry.IP))
 			case InvalidViolationTypeError:
-				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string("Invalid violation type provided"))
+				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest,
+					fmt.Sprintf(DescribeErrno(InvalidViolationTypeError), entry.Violation))
 			default:
 				writeEntryErrorResponse(w, i, entry, http.StatusBadRequest, string(""))
 			}
 			return
 		}
 
-		if duplicateIP, ok := seenIps[entry.IP]; ok {
-			writeEntryErrorResponse(w, i, entry, http.StatusConflict, fmt.Sprintf(DescribeErrno(DuplicateIPError), duplicateIP))
+		if _, ok := seenIps[entry.IP]; ok {
+			writeEntryErrorResponse(w, i, entry, http.StatusConflict,
+				fmt.Sprintf(DescribeErrno(DuplicateIPError), entry.IP))
 			return
 		}
 		seenIps[entry.IP] = true
@@ -193,7 +204,9 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 
 	err = db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry by violation: %s", err)
+		log.WithFields(log.Fields{
+			"errno": DBError,
+		}).Warnf("Could not update reputation entry by violation: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
