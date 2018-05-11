@@ -88,5 +88,5 @@ func ValidateIPViolationEntryAndGetPenalty(entry IPViolationEntry) (uint, Errno)
 		return 0, MissingViolationTypeError
 	}
 
-	return uint(penalty), 0
+	return penalty, 0
 }
