@@ -240,13 +240,14 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 	var entry ReputationEntry
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
+		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	err = json.Unmarshal(body, &entry)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
+		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError),
+			err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -254,10 +255,13 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !IsValidReputationEntry(entry) {
 		if !IsValidReputationCIDROrIP(entry.IP) {
-			log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), entry.IP)
+			log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError),
+				entry.IP)
 		}
 		if !IsValidReputation(entry.Reputation) {
-			log.WithFields(log.Fields{"errno": InvalidReputationError}).Infof(DescribeErrno(InvalidReputationError), entry.Reputation)
+			log.WithFields(log.Fields{
+				"errno": InvalidReputationError,
+			}).Infof(DescribeErrno(InvalidReputationError), entry.Reputation)
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -349,7 +353,8 @@ func ReadReputationHandler(w http.ResponseWriter, r *http.Request) {
 	json, err := json.Marshal(entry)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "reputation", err)
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError),
+			"reputation", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
