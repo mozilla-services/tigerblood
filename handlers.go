@@ -45,10 +45,12 @@ func VersionHandler(w http.ResponseWriter, req *http.Request) {
 	filename := path.Clean(dir + string(os.PathSeparator) + "version.json")
 	f, err := os.Open(filename)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": FileNotFound}).Warnf(DescribeErrno(FileNotFound), "version.json", err)
+		log.WithFields(log.Fields{"errno": FileNotFound}).Warnf(DescribeErrno(FileNotFound),
+			"version.json", err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	defer f.Close()
 	stat, err := f.Stat()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
