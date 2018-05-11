@@ -94,27 +94,31 @@ func ListExceptionsHandler(w http.ResponseWriter, req *http.Request) {
 	json, err := json.Marshal(entries)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "exceptions", err)
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError),
+			"exceptions", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(json)
 }
 
-func writeEntryErrorResponse(w http.ResponseWriter, entryIndex int, entry IPViolationEntry, statusCode int, msg string) {
-	type EntryError struct {
+func writeEntryErrorResponse(w http.ResponseWriter, entryIndex int, entry IPViolationEntry, statusCode int,
+	msg string) {
+	entryError := struct {
 		EntryIndex int
 		Entry      IPViolationEntry
 		Msg        string
-	}
-	entryError := EntryError{
-		EntryIndex: entryIndex,
-		Entry:      entry,
-		Msg:        msg,
+	}{
+		entryIndex,
+		entry,
+		msg,
 	}
 	j, err := json.Marshal(entryError)
 	if err != nil {
-		log.Warnf("error marshaling error response JSON: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError),
+			"entry error", err)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -126,7 +130,7 @@ func writeEntryErrorResponse(w http.ResponseWriter, entryIndex int, entry IPViol
 func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
+		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
