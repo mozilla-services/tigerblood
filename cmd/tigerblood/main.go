@@ -143,24 +143,25 @@ func loadViolationPenalties() map[string]uint {
 	for _, kv := range strings.Split(viper.GetString("VIOLATION_PENALTIES"), ",") {
 		tmp := strings.Split(kv, "=")
 		if len(tmp) != 2 {
-			log.Printf("Error loading violation penalty %s (format should be type=penalty)", tmp)
+			log.Fatalf("Error loading violation penalty %s (format should be type=penalty)", tmp)
 			continue
 		}
 		violationType, penalty := tmp[0], tmp[1]
-		parsedPenalty, err := strconv.ParseUint(penalty, 10, 64)
+		parsedPenalty64, err := strconv.ParseUint(penalty, 10, 64)
 		if err != nil {
-			log.Printf("Error parsing violation weight %s: %s", penalty, err)
+			log.Fatalf("Error parsing violation weight %s: %s", penalty, err)
 			continue
 		}
+		parsedPenalty := uint(parsedPenalty64)
 		if !tigerblood.IsValidViolationName(violationType) {
-			log.Printf("Skipping invalid violation type: %s", violationType)
+			log.Fatalf("Invalid violation type: %s", violationType)
 			continue
 		}
 		if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
-			log.Printf("Skipping invalid violation penalty: %s: %d", violationType, parsedPenalty)
+			log.Fatalf("Invalid violation penalty: %s: %d", violationType, parsedPenalty)
 			continue
 		}
-		penalties[violationType] = uint(parsedPenalty)
+		penalties[violationType] = parsedPenalty
 	}
 	var vms string
 	for x := range penalties {

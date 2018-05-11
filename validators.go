@@ -36,7 +36,7 @@ func IsValidReputation(reputation uint) bool {
 }
 
 // IsValidViolationPenalty checks if violation penalty is in [0, 100]
-func IsValidViolationPenalty(penalty uint64) bool {
+func IsValidViolationPenalty(penalty uint) bool {
 	return penalty >= 0 && penalty <= 100
 }
 

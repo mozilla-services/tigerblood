@@ -58,23 +58,20 @@ func SetStatsdClient(newClient *statsd.Client) {
 // SetViolationPenalties sets or updates the violation penalties map
 func SetViolationPenalties(newPenalties map[string]uint) {
 	for violationType, penalty := range newPenalties {
-		if !(IsValidViolationName(violationType) && IsValidViolationPenalty(uint64(penalty))) {
-			delete(newPenalties, violationType)
-			if !IsValidViolationName(violationType) {
-				log.Printf("Skipping invalid violation type: %s", violationType)
-			}
-			if !IsValidViolationPenalty(uint64(penalty)) {
-				log.Printf("Skipping invalid violation penalty: %s", penalty)
-			}
+		if !IsValidViolationName(violationType) {
+			log.Fatalf("Invalid violation type: %s", violationType)
+		}
+		if !IsValidViolationPenalty(penalty) {
+			log.Fatalf("Invalid violation penalty: %d", penalty)
 		}
 	}
-
 	violationPenalties = newPenalties
 
 	// set violationPenaltiesJSON
 	json, err := json.Marshal(violationPenalties)
 	if err != nil {
-		log.WithFields(log.Fields{"errno": JSONMarshalError}).Warnf(DescribeErrno(JSONMarshalError), "violations", err)
+		log.WithFields(log.Fields{"errno": JSONMarshalError}).Fatalf(DescribeErrno(JSONMarshalError),
+			"violations", err)
 	}
 	violationPenaltiesJSON = json
 }
