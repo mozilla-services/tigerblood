@@ -163,7 +163,14 @@ func loadViolationPenalties() map[string]uint {
 		}
 		penalties[violationType] = uint(parsedPenalty)
 	}
-	log.Printf("loaded violation map: %s", penalties)
+	var vms string
+	for x := range penalties {
+		if vms != "" {
+			vms += ", "
+		}
+		vms += fmt.Sprintf("%s=%d", x, penalties[x])
+	}
+	log.Printf("loaded violation map: %s", vms)
 
 	return penalties
 }
