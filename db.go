@@ -15,6 +15,7 @@ type CheckViolationError struct {
 	Inner *pq.Error
 }
 
+// Error returns the inner error string
 func (e CheckViolationError) Error() string {
 	return e.Inner.Error()
 }
@@ -24,6 +25,7 @@ type DuplicateKeyError struct {
 	Inner *pq.Error
 }
 
+// Error returns the inner error string
 func (e DuplicateKeyError) Error() string {
 	return e.Inner.Error()
 }
@@ -42,7 +44,7 @@ type DB struct {
 	wait                 *sync.WaitGroup
 }
 
-// ReputationEntry an (IP, Reputation) entry
+// ReputationEntry is an (IP, Reputation) entry
 type ReputationEntry struct {
 	IP         string // The IP address for the entry
 	Reputation uint   // The reputation score
@@ -70,7 +72,7 @@ func checkConnection(db *DB) {
 		var one uint
 		err := db.QueryRow("SELECT 1").Scan(&one)
 		if err != nil {
-			log.Fatal("Database connection failed:", err)
+			log.Fatal("Database connection failed: ", err)
 		}
 		if one != 1 {
 			log.Fatal("Apparently the database doesn't know the meaning of one anymore. Crashing.")
@@ -294,7 +296,8 @@ func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string, reputat
 	return err
 }
 
-// SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.
+// SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP
+// passed as a parameter.
 func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	var entry ReputationEntry
 	err := db.reputationSelectStmt.QueryRow(ip).Scan(&entry.IP, &entry.Reputation, &entry.Reviewed)
@@ -311,7 +314,8 @@ func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	return err
 }
 
-// InsertOrUpdateExceptionEntry inserts a single ExceptionEntry into the database, and if it already exists, it updates it
+// InsertOrUpdateExceptionEntry inserts a single ExceptionEntry into the database, and if it already exists,
+// it updates it
 func (db DB) InsertOrUpdateExceptionEntry(tx *sql.Tx, entry ExceptionEntry) error {
 	exec := db.Exec
 	if tx != nil {
