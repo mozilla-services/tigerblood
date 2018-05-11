@@ -32,7 +32,14 @@ func SetProfileHandlers(profileHandlers bool) {
 	for route := range UnauthedDebugRoutes {
 		UnauthedRoutes[route] = useProfileHandlers
 	}
-	log.Printf("Unauthed routes: %s", UnauthedRoutes)
+	var urs string
+	for x := range UnauthedRoutes {
+		if urs != "" {
+			urs += ", "
+		}
+		urs += x
+	}
+	log.Printf("Unauthed routes: %s", urs)
 
 	if profileHandlers {
 		runtime.SetMutexProfileFraction(5)
