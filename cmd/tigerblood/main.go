@@ -20,14 +20,14 @@ func printConfig() {
 	var fields = log.Fields{}
 	for key, value := range viper.AllSettings() {
 		switch key {
-		case "credentials": // skip sensitive keys
+		case "hawk_credentials":
+		case "apikey_credentials":
 		case "dsn":
 		default:
 			fields[key] = value
 		}
 	}
-
-	log.WithFields(fields).Info("Loaded viper config:")
+	log.WithFields(fields).Info("Loaded viper config")
 }
 
 func startRuntimeCollector() {
