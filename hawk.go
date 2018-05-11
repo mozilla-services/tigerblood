@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	log "github.com/sirupsen/logrus"
 	"go.mozilla.org/hawk"
-	"go.mozilla.org/mozlogrus"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -16,10 +15,6 @@ import (
 // HawkData is hawk config data (.credentials is a map of Hawk IDs to passwords)
 type HawkData struct {
 	credentials map[string]string
-}
-
-func init() {
-	mozlogrus.Enable("tigerblood")
 }
 
 // NewHawkData returns hawk config data for a map of hawk creds

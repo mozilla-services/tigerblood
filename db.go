@@ -5,15 +5,10 @@ import (
 	"fmt"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
 	"strings"
 	"sync"
 	"time"
 )
-
-func init() {
-	mozlogrus.Enable("tigerblood")
-}
 
 // CheckViolationError postgres violation error
 type CheckViolationError struct {

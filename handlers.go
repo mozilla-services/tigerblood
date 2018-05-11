@@ -5,16 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 )
-
-func init() {
-	mozlogrus.Enable("tigerblood")
-}
 
 // LoadBalancerHeartbeatHandler returns 200 if the server is up
 func LoadBalancerHeartbeatHandler(w http.ResponseWriter, req *http.Request) {

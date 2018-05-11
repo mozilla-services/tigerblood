@@ -2,14 +2,9 @@ package tigerblood
 
 import (
 	log "github.com/sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
 	"net"
 	"regexp"
 )
-
-func init() {
-	mozlogrus.Enable("tigerblood")
-}
 
 // IsValidReputationCIDROrIP checks that string can be parsed as a cidr or ip
 func IsValidReputationCIDROrIP(s string) bool {
