@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 
 	"go.mozilla.org/hawk"
 )
 
 var (
-	ClientUnexpectedGETStatusError  = errors.New("Unexpected HTTP status from GET.")
+	ClientUnexpectedGETStatusError  = errors.New("Unexpected HTTP status from GET")
 	ClientUnexpectedPUTStatusError  = errors.New("Unexpected HTTP Status from PUT")
 	ClientUnexpectedPOSTStatusError = errors.New("Unexpected HTTP Status from POST")
 )
@@ -59,33 +58,22 @@ func (client Client) SetReputation(cidr string, reputation uint, rev bool) (*htt
 		Reputation: reputation,
 		Reviewed:   rev,
 	}
-	body, error := json.Marshal(entry)
-	if error != nil {
-		fmt.Printf("Error marshaling request JSON body: %s\n", error)
-		os.Exit(1)
+	body, err := json.Marshal(entry)
+	if err != nil {
+		return nil, err
 	}
 
-	req, error := http.NewRequest("POST", client.URL, bytes.NewReader(body))
+	req, err := http.NewRequest("PUT", client.URL+cidr, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
 	client.AuthRequest(req, body)
-	resp, error := client.Do(req)
-	if error != nil {
-		return resp, error
+	resp, err := client.Do(req)
+	if err != nil {
+		return resp, err
 	}
-	if resp.StatusCode == http.StatusConflict {
-		fmt.Printf("Attempting update of IP since it already exists.\n")
-
-		req, error := http.NewRequest("PUT", client.URL+cidr, bytes.NewReader(body))
-		client.AuthRequest(req, body)
-		resp, error := client.Do(req)
-		if error != nil {
-			return resp, error
-		}
-		if resp.StatusCode != http.StatusOK {
-			return resp, ClientUnexpectedPUTStatusError
-		}
-		return resp, nil
-	} else if resp.StatusCode != http.StatusCreated {
-		return resp, ClientUnexpectedPOSTStatusError
+	if resp.StatusCode != http.StatusOK {
+		return resp, ClientUnexpectedPUTStatusError
 	}
 	return resp, nil
 }
