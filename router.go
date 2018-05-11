@@ -111,12 +111,6 @@ var routes = Routes{
 		MultiUpsertReputationByViolationHandler,
 	},
 	Route{
-		"UpsertReputationByViolation",
-		"PUT",
-		"/violations/{type:[[:punct:]\\w]{1,255}}", // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
-		UpsertReputationByViolationHandler,
-	},
-	Route{
 		"ReadReputation",
 		"GET",
 		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}", // see above note for all punct for IPs w/ colons e.g. 2001:db8::/32

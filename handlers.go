@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 )
 
 func init() {
@@ -103,95 +102,6 @@ func ListExceptionsHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(json)
-}
-
-// UpsertReputationByViolationHandler takes a JSON body from the http request
-// and upserts the reputation entry on the database to the reputation
-// given in reputation violation.  The HTTP requests path has to
-// contain the IP to be updated, in CIDR notation. For example:
-// {"Violation": "password-reset-rate-limit-exceeded"}
-func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
-	splitPath := strings.Split(r.URL.Path, "/")
-	if len(splitPath) != 3 {
-		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), r.URL.Path)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	ip, err := IPAddressFromHTTPPath("/" + splitPath[2])
-
-	if err != nil {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), r.URL.Path, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if !IsValidReputationCIDROrIP(ip) {
-		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), splitPath[2])
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	type ViolationBody struct {
-		Violation string
-	}
-	var bodyJSON ViolationBody
-	err = json.Unmarshal(body, &bodyJSON)
-	if err != nil {
-		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError), err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	entry := IPViolationEntry{
-		IP:        ip,
-		Violation: bodyJSON.Violation,
-	}
-
-	penalty, errno := ValidateIPViolationEntryAndGetPenalty(entry)
-	if errno > 0 {
-		switch errno {
-		case MissingViolations:
-			w.WriteHeader(http.StatusInternalServerError)
-		case MissingViolationTypeError:
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Violation type not found."))
-		case InvalidViolationTypeError:
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Invalid violation type provided"))
-		default:
-			w.WriteHeader(http.StatusBadRequest)
-		}
-		return
-	}
-
-	if db == nil {
-		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	ips, penalties := make([]string, 1), make([]uint, 1)
-	ips[0] = ip
-	penalties[0] = penalty
-
-	err = db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
-	if _, ok := err.(CheckViolationError); ok {
-		log.WithFields(log.Fields{"errno": InvalidReputationError}).Warnf("Reputation is outside of valid range [0-100]")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Reputation is outside of valid range [0-100]"))
-	} else if err != nil {
-		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry by violation: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else if err == nil {
-		log.Debugf("Updated reputation for %s due to %d", ip, penalty)
-		w.WriteHeader(http.StatusNoContent)
-	}
 }
 
 func writeEntryErrorResponse(w http.ResponseWriter, entryIndex int, entry IPViolationEntry, statusCode int, msg string) {
