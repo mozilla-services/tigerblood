@@ -123,7 +123,7 @@ func DescribeErrno(errno Errno) string {
 	case MissingReputationError:
 		return "Error finding reputation parameter in %s: %s"
 	case MissingViolationTypeError:
-		return "Error finding violation type in %s: %s"
+		return "Error finding violation type: %s"
 	case MissingIPViolationEntryError:
 		return "Error finding an IP and violation type object in request body"
 

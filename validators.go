@@ -52,10 +52,12 @@ func IsValidReputationEntry(entry ReputationEntry) bool {
 	return IsValidReputationCIDROrIP(entry.IP) && IsValidReputation(entry.Reputation)
 }
 
-// ValidateIPViolationEntryAndGetPenalty validates violation type and returns violation penalty and Errno or 0 for no error
+// ValidateIPViolationEntryAndGetPenalty validates violation type and returns violation penalty
+// and Errno or 0 for no error
 func ValidateIPViolationEntryAndGetPenalty(entry IPViolationEntry) (uint, Errno) {
 	if len(entry.IP) < 1 {
-		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError), entry.IP, "")
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError),
+			entry.IP, "")
 		return 0, MissingIPError
 	}
 
@@ -65,7 +67,10 @@ func ValidateIPViolationEntryAndGetPenalty(entry IPViolationEntry) (uint, Errno)
 	}
 
 	if !IsValidViolationName(entry.Violation) {
-		log.WithFields(log.Fields{"errno": InvalidViolationTypeError}).Infof(DescribeErrno(InvalidViolationTypeError), entry.Violation)
+		log.WithFields(log.Fields{
+			"errno": InvalidViolationTypeError,
+		}).Infof(DescribeErrno(InvalidViolationTypeError),
+			entry.Violation)
 		return 0, InvalidViolationTypeError
 	}
 
@@ -77,7 +82,9 @@ func ValidateIPViolationEntryAndGetPenalty(entry IPViolationEntry) (uint, Errno)
 	// lookup violation weight in config map
 	var penalty, ok = violationPenalties[entry.Violation]
 	if !ok {
-		log.WithFields(log.Fields{"errno": MissingViolationTypeError}).Infof("Could not find violation type: %s", entry.Violation)
+		log.WithFields(log.Fields{
+			"errno": MissingViolationTypeError,
+		}).Infof(DescribeErrno(MissingViolationTypeError), entry.Violation)
 		return 0, MissingViolationTypeError
 	}
 
