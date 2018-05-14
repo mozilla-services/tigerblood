@@ -10,6 +10,27 @@ import (
 	"testing"
 )
 
+func TestAuthDisabled(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	recorder := httptest.NewRecorder()
+	SetAuthMask(0)
+	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireAuth()})
+	handler.ServeHTTP(recorder, req)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestInvalidAuthorizationAPIKeyDirect(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
+	assert.Nil(t, err)
+	credentials := map[string]string{"test": "valid_key", "test2": "valid_key2"}
+	SetAPIKeyCredentials(credentials)
+	SetAuthMask(AuthEnableAPIKey)
+	assert.False(t, APIKeyAuth(req, apiKeyData))
+	req.Header.Set("Authorization", "APIKey valid_key")
+	assert.True(t, APIKeyAuth(req, apiKeyData))
+}
+
 func TestMissingAuthorizationAPIKey(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://foo.bar/", bytes.NewReader([]byte("foo")))
 	assert.Nil(t, err)
