@@ -6,10 +6,9 @@ package tigerblood
 // Errno an error number for looking up error messages
 type Errno uint
 
+// Authentication errors
 const (
-	// auth errors
 	_ = iota
-
 	// HawkAuthFormatError a hawk error
 	HawkAuthFormatError
 	// HawkReplayError hawk replay attack detected
@@ -30,70 +29,74 @@ const (
 	HawkInvalidBodyHash
 	// HawkReadBodyError error reading the request body
 	HawkReadBodyError
+)
 
-	// missing global errors usually result in warnings or 500 errors
-
+// missing global errors usually result in warnings or 500 errors
+const (
 	// MissingDB db not configured
-	MissingDB = 20
+	MissingDB = 20 + iota
 	// MissingStatsdClient statsd client not configured
-	MissingStatsdClient = iota
+	MissingStatsdClient
 	// MissingViolations violation penalties not set
-	MissingViolations = iota
+	MissingViolations
+)
 
-	// encoding/decoding errors
-
+// encoding/decoding errors
+const (
 	// BodyReadError error reading request body
-	BodyReadError = 30
+	BodyReadError = 30 + iota
 	// JSONMarshalError error marshalling json
-	JSONMarshalError = iota
+	JSONMarshalError
 	// JSONUnmarshalError error unmarshalling json
-	JSONUnmarshalError = iota
+	JSONUnmarshalError
+)
 
-	// validation errors usually result in a 400 error
-
+// validation errors usually result in a 400 error
+const (
 	// InvalidIPError IP/CIDR validation failure
-	InvalidIPError = 40
+	InvalidIPError = 40 + iota
 	// InvalidReputationError reputation validation failure
-	InvalidReputationError = iota
+	InvalidReputationError
 	// InvalidViolationTypeError violation type validation failed
-	InvalidViolationTypeError = iota
+	InvalidViolationTypeError
 	// TooManyIPViolationEntriesError too many IP Violation entries
-	TooManyIPViolationEntriesError = iota
+	TooManyIPViolationEntriesError
 	// DuplicateIPError when the same IP occurs in multiple entries
-	DuplicateIPError = iota
+	DuplicateIPError
+)
 
-	// missing parameter errors usually result in a 400 error
-
+// missing parameter errors usually result in a 400 error
+const (
 	// MissingIPError no IP in request params or body
-	MissingIPError = 50
+	MissingIPError = 50 + iota
 	// MissingReputationError no reputation in request params or body
-	MissingReputationError = iota
+	MissingReputationError
 	// MissingViolationTypeError no violation type in request params or body
-	MissingViolationTypeError = iota
+	MissingViolationTypeError
 	// MissingIPViolationEntryError no (for the multi violations endpoint)
-	MissingIPViolationEntryError = iota
+	MissingIPViolationEntryError
+)
 
-	// IO/DB errors
-
+// IO/DB errors
+const (
 	// DBError generic postgres or postgres driver error
-	DBError = 60
+	DBError = 60 + iota
 	// CWDNotFound error when get CWD fails
-	CWDNotFound = iota
+	CWDNotFound
 	// FileNotFound file not found error
-	FileNotFound = iota
+	FileNotFound
+)
 
-	// API key authentication errors
-
+// API key authentication errors
+const (
 	// APIKeyNotSpecified indicates the header value was not found
-	APIKeyNotSpecified = 70
+	APIKeyNotSpecified = 70 + iota
 	// APIKeyInvalid indicates the key was not a configured credential
 	APIKeyInvalid = iota
-
-	// Unknown errors
-
-	// UnknownError is for generic errors
-	UnknownError = 999
 )
+
+// UnknownError is for generic errors
+const UnknownError = 999
 
 // DescribeErrno returns a format string for the errno; not implemented for all errnos
 func DescribeErrno(errno Errno) string {
@@ -115,9 +118,7 @@ func DescribeErrno(errno Errno) string {
 		return "Too many IP, violation objects in request body"
 	case DuplicateIPError:
 		return "Duplicate IP found in multiple entries: %s"
-	}
 
-	switch errno {
 	case MissingIPError:
 		return "Error finding IP parameter"
 	case MissingReputationError:
