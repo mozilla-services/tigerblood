@@ -34,7 +34,7 @@ func TestReadReputationValidIP(t *testing.T) {
 	assert.True(t, found)
 	db, err := NewDB(dsn)
 	assert.Nil(t, err)
-	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
+	_, err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
 		IP:         "127.0.0.0/8",
 		Reputation: 50,
 	})
@@ -57,7 +57,7 @@ func TestReadReputationNoEntry(t *testing.T) {
 	assert.Nil(t, err)
 	db.EmptyTables()
 
-	err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
+	_, err = db.InsertOrUpdateReputationEntry(nil, ReputationEntry{
 		IP:         "127.0.0.0/8",
 		Reputation: 50,
 	})

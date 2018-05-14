@@ -231,32 +231,28 @@ func (db DB) emptyExceptionTable() error {
 
 // InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, or if it already
 // exists it updates it
-func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
-	exec := db.Exec
+func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) (ret uint, err error) {
+	query := db.QueryRow
 	if tx != nil {
-		exec = tx.Exec
+		query = tx.QueryRow
 	}
-	result, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
-		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip)"+
-		"ON CONFLICT (ip) DO UPDATE SET reputation = $2, reviewed = $3;", entry.IP,
-		entry.Reputation, entry.Reviewed)
-
+	err = query("INSERT INTO reputation (ip, reputation, reviewed) "+
+		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip) "+
+		"ON CONFLICT (ip) DO UPDATE SET reputation = $2, reviewed = $3 "+
+		"RETURNING reputation;", entry.IP,
+		entry.Reputation, entry.Reviewed).Scan(&ret)
 	if pqErr, ok := err.(*pq.Error); ok {
 		if pqErr.Code == pgCheckViolationErrorCode {
-			return CheckViolationError{pqErr}
+			return 0, CheckViolationError{pqErr}
 		}
 	}
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			return 0, ErrNoRowsAffected
+		}
+		return 0, err
 	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return ErrNoRowsAffected
-	}
-	return nil
+	return ret, nil
 }
 
 // InsertOrUpdateReputationPenalties applies a reputationPenalty to the

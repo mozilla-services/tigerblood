@@ -273,7 +273,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.InsertOrUpdateReputationEntry(nil, entry)
+	retrep, err := db.InsertOrUpdateReputationEntry(nil, entry)
 	if _, ok := err.(CheckViolationError); ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Reputation is outside of valid range [0-100]"))
@@ -288,6 +288,7 @@ func UpdateReputationHandler(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(log.Fields{"errno": DBError}).Warnf("Could not update reputation entry: %s", err)
 		return
 	}
+	log.WithFields(log.Fields{"ip": entry.IP, "reputation": retrep}).Infof("reputation set")
 	w.WriteHeader(http.StatusOK)
 }
 
