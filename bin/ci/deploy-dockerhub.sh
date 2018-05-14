@@ -32,4 +32,9 @@ if [ -n "$1" ]; then
     retry 3 docker push "mozilla/tigerblood:$TAG" ||
         (echo "Couldn't push mozilla/tigerblood:$TAG" && false)
     echo "Pushed mozilla/tigerblood:$TAG"
+
+    docker tag tigerblood:test_db "mozilla/tigerblood_test_db:$TAG" ||
+        (echo "Couldn't tag tigerblood:test_db as mozilla/tigerblood_test_db:$TAG" && false)
+    retry 3 docker push "mozilla/tigerblood_test_db:$TAG" ||
+        (echo "Couldn't push mozilla/tigerblood_test_db:$TAG" && false)
 fi

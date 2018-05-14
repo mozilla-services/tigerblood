@@ -2,12 +2,13 @@ version: '3'
 
 services:
   db:
-    container_name: postgres-ip4r
+    container_name: tigerblood_test_db
+    image: tigerblood:test_db
     build:
       context: .
       dockerfile: postgres.Dockerfile
     environment:
-          - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_PASSWORD=mysecretpassword
     ports:
       - "5432:5432"
 
