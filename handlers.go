@@ -202,7 +202,7 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		ips[i], penalties[i] = entry.IP, penalty
 	}
 
-	err = db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
+	setrep, err := db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"errno": DBError,
@@ -210,8 +210,16 @@ func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	for i := range entries {
+		log.WithFields(log.Fields{
+			"ip":         ips[i],
+			"penalty":    penalties[i],
+			"violation":  entries[i].Violation,
+			"reputation": setrep[i],
+		}).Infof("violation applied")
+	}
 
-	log.Debugf("Updated %s reputations", len(entries))
+	log.Infof("updated %d reputations", len(entries))
 	w.WriteHeader(http.StatusNoContent)
 }
 

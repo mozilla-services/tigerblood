@@ -151,7 +151,7 @@ func TestInsertOrUpdateReputationPenalties(t *testing.T) {
 	assert.Nil(t, testDB.EmptyTables())
 
 	// test insert
-	err := testDB.InsertOrUpdateReputationPenalties(nil, []string{"192.168.0.1"}, []uint{90})
+	_, err := testDB.InsertOrUpdateReputationPenalties(nil, []string{"192.168.0.1"}, []uint{90})
 	assert.Nil(t, err)
 
 	entry, err := testDB.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -159,7 +159,7 @@ func TestInsertOrUpdateReputationPenalties(t *testing.T) {
 	assert.Equal(t, uint(10), entry.Reputation)
 
 	// test update
-	err = testDB.InsertOrUpdateReputationPenalties(nil, []string{"192.168.0.1"}, []uint{9})
+	_, err = testDB.InsertOrUpdateReputationPenalties(nil, []string{"192.168.0.1"}, []uint{9})
 	assert.Nil(t, err)
 
 	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -167,7 +167,7 @@ func TestInsertOrUpdateReputationPenalties(t *testing.T) {
 	assert.Equal(t, uint(1), entry.Reputation)
 
 	// test reputation doesn't go negative
-	err = testDB.InsertOrUpdateReputationPenalties(nil, []string{"192.168.0.1"}, []uint{90})
+	_, err = testDB.InsertOrUpdateReputationPenalties(nil, []string{"192.168.0.1"}, []uint{90})
 	assert.Nil(t, err)
 
 	entry, err = testDB.SelectSmallestMatchingSubnet("192.168.0.1")

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
-	"strings"
 	"sync"
 	"time"
 )
@@ -257,39 +256,36 @@ func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) (r
 
 // InsertOrUpdateReputationPenalties applies a reputationPenalty to the
 // default reputation (100) and inserts a reputationEntry or updates
-// an reputationEntry with the penalty
-func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string, reputationPenalties []uint) error {
-	exec := db.Exec
+// a reputationEntry with the penalty
+func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string,
+	reputationPenalties []uint) (ret []uint, err error) {
+	query := db.QueryRow
 	if tx != nil {
-		exec = tx.Exec
+		query = tx.QueryRow
+	}
+	if len(ips) != len(reputationPenalties) {
+		return ret, fmt.Errorf("IP and penalty list mismatched length")
 	}
 
-	vals := []interface{}{}
-	index := 0
-
-	sqlStr := "WITH x AS (SELECT * FROM unnest(array["
-
-	for i, ip := range ips {
-		sqlStr += fmt.Sprintf("$%d,", i+1)
-		vals = append(vals, ip)
-		index = i + 1
+	var vnew uint
+	for i := range ips {
+		vip, vpenalty := ips[i], reputationPenalties[i]
+		err := query("INSERT INTO reputation (ip, reputation) "+
+			"SELECT $1, 100 - $2 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip) "+
+			"ON CONFLICT (ip) DO UPDATE SET "+
+			"reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - "+
+			"(100 - excluded.reputation))) RETURNING reputation",
+			vip, vpenalty).Scan(&vnew)
+		if err != nil {
+			if err != sql.ErrNoRows {
+				return ret, err
+			}
+			// Otherwise it was excluded by an exception, so just mark it as 100
+			ret = append(ret, 100)
+		}
+		ret = append(ret, vnew)
 	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-
-	sqlStr += "]::ip4r[], array["
-	for i, p := range reputationPenalties {
-		sqlStr += fmt.Sprintf("100 - $%d,", index+i+1)
-		vals = append(vals, p)
-	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-	sqlStr += "]) AS x(t0, t1) WHERE NOT EXISTS (SELECT 1 FROM exception WHERE t0 <<= ip)) " +
-		"INSERT INTO reputation (ip, reputation) SELECT x.t0, x.t1 FROM x " +
-		"ON CONFLICT (ip) DO UPDATE SET reputation = " +
-		"GREATEST(0, LEAST(excluded.reputation, reputation.reputation - (100 - excluded.reputation)));"
-
-	log.Debugf("sql: %s %s", sqlStr, vals)
-	_, err := exec(sqlStr, vals...)
-	return err
+	return ret, nil
 }
 
 // SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP
