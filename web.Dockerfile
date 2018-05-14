@@ -23,3 +23,4 @@ RUN go install go.mozilla.org/tigerblood/cmd/tigerblood
 USER app
 WORKDIR /app
 ENTRYPOINT ["/bin/bash", "/app/bin/run.sh"]
+EXPOSE 8080
