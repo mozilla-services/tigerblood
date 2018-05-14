@@ -2,7 +2,7 @@ version: '3'
 
 services:
   db:
-    container_name: postgres-ip4r
+    container_name: tigerblood_test_db
     build:
       context: .
       dockerfile: postgres.Dockerfile
