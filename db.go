@@ -71,7 +71,7 @@ func checkConnection(db *DB) {
 		var one uint
 		err := db.QueryRow("SELECT 1").Scan(&one)
 		if err != nil {
-			log.Fatal("Database connection failed: ", err)
+			log.Fatalf("Database connection failed: %s", err)
 		}
 		if one != 1 {
 			log.Fatal("Apparently the database doesn't know the meaning of one anymore. Crashing.")
