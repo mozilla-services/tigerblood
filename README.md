@@ -31,7 +31,7 @@ The following configuration options are available:
 | HAWK_CREDENTIALS           | A map of hawk id-keys.                                                                   | -                 |
 | APIKEY                     | true to enable API key authentication. If true is provided, credentials must be non-empty                                     | -                 |
 | APIKEY_CREDENTIALS         | A map of API key identifier and key values                                               | -                 |
-| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
+| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes. Mandatory.          | -                 |
 | EXCEPTIONS                 | Exceptions configuration, see Exceptions section of README                               | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | STATSD\_NAMESPACE          | The statsd namespace prefix                                                              | tigerblood.       |
