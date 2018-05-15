@@ -70,7 +70,7 @@ func RequireAuth() Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, ok := UnauthedRoutes[r.URL.Path]; ok {
 				// Authentication not required, continue
-				log.Debugf("Skipping auth for route: %s", r.URL.Path)
+				log.Warnf("Skipping auth for route: %s", r.URL.Path)
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -108,8 +108,9 @@ func APIKeyAuth(r *http.Request, m *APIKeyData) bool {
 	}
 
 	hdr = strings.TrimPrefix(hdr, "APIKey ")
-	for _, v := range m.credentials {
+	for k, v := range m.credentials {
 		if hdr == v {
+			log.WithFields(log.Fields{"id": k}).Infof("apikey: accepted request")
 			return true
 		}
 	}

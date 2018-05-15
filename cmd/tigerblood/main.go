@@ -20,14 +20,14 @@ func printConfig() {
 	var fields = log.Fields{}
 	for key, value := range viper.AllSettings() {
 		switch key {
-		case "credentials": // skip sensitive keys
+		case "hawk_credentials":
+		case "apikey_credentials":
 		case "dsn":
 		default:
 			fields[key] = value
 		}
 	}
-
-	log.WithFields(fields).Info("Loaded viper config:")
+	log.WithFields(fields).Info("Loaded viper config")
 }
 
 func startRuntimeCollector() {
@@ -112,10 +112,9 @@ func loadDB() *tigerblood.DB {
 	} else {
 		lifetime, err := time.ParseDuration(viper.GetString("DATABASE_MAXLIFETIME"))
 		if err != nil {
-			db.SetConnMaxLifetime(lifetime)
-		} else {
-			log.Warnf("Error parsing conn db max lifetime: %s", err)
+			log.Fatalf("Error parsing conn db max lifetime: %s", err)
 		}
+		db.SetConnMaxLifetime(lifetime)
 	}
 	return db
 }
@@ -144,26 +143,34 @@ func loadViolationPenalties() map[string]uint {
 	for _, kv := range strings.Split(viper.GetString("VIOLATION_PENALTIES"), ",") {
 		tmp := strings.Split(kv, "=")
 		if len(tmp) != 2 {
-			log.Printf("Error loading violation penalty %s (format should be type=penalty)", tmp)
+			log.Fatalf("Error loading violation penalty %s (format should be type=penalty)", tmp)
 			continue
 		}
 		violationType, penalty := tmp[0], tmp[1]
-		parsedPenalty, err := strconv.ParseUint(penalty, 10, 64)
+		parsedPenalty64, err := strconv.ParseUint(penalty, 10, 64)
 		if err != nil {
-			log.Printf("Error parsing violation weight %s: %s", parsedPenalty, err)
+			log.Fatalf("Error parsing violation weight %s: %s", penalty, err)
 			continue
 		}
+		parsedPenalty := uint(parsedPenalty64)
 		if !tigerblood.IsValidViolationName(violationType) {
-			log.Printf("Skipping invalid violation type: %s", violationType)
+			log.Fatalf("Invalid violation type: %s", violationType)
 			continue
 		}
 		if !tigerblood.IsValidViolationPenalty(parsedPenalty) {
-			log.Printf("Skipping invalid violation penalty: %s", parsedPenalty)
+			log.Fatalf("Invalid violation penalty: %s: %d", violationType, parsedPenalty)
 			continue
 		}
-		penalties[violationType] = uint(parsedPenalty)
+		penalties[violationType] = parsedPenalty
 	}
-	log.Printf("loaded violation map: %s", penalties)
+	var vms string
+	for x := range penalties {
+		if vms != "" {
+			vms += ", "
+		}
+		vms += fmt.Sprintf("%s=%d", x, penalties[x])
+	}
+	log.Printf("loaded violation map: %s", vms)
 
 	return penalties
 }

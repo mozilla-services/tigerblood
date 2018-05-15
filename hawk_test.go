@@ -115,7 +115,7 @@ func TestValidPayloadNoContentType(t *testing.T) {
 	SetAuthMask(AuthEnableHawk)
 	handler := HandleWithMiddleware(EchoHandler, []Middleware{RequireAuth()})
 	handler.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
 func TestExpiration(t *testing.T) {

@@ -31,7 +31,7 @@ The following configuration options are available:
 | HAWK_CREDENTIALS           | A map of hawk id-keys.                                                                   | -                 |
 | APIKEY                     | true to enable API key authentication. If true is provided, credentials must be non-empty                                     | -                 |
 | APIKEY_CREDENTIALS         | A map of API key identifier and key values                                               | -                 |
-| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes.          | -                 |
+| VIOLATION_PENALTIES        | A map of violation names to their reputation penalty weight 0 to 100 inclusive. Ignores violation names with dashes. Mandatory.          | -                 |
 | EXCEPTIONS                 | Exceptions configuration, see Exceptions section of README                               | -                 |
 | STATSD\_ADDR               | The host and port for statsd                                                             | 127.0.0.1:8125    |
 | STATSD\_NAMESPACE          | The statsd namespace prefix                                                              | tigerblood.       |
@@ -174,18 +174,6 @@ Retrieves information about an IP address or network.
 
 Example: `curl http://tigerblood/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
 
-#### POST /
-
-Records information about a new IP address or network.
-
-* Request body: a JSON object with the schema specified above
-* Request parameters: None
-
-* Response body: None
-* Successful response status code: 201
-
-Example: `curl -d '{"IP": "240.0.0.1", "Reputation": 45}' -X POST http://tigerblood/ --header "Authorization: {YOUR_HAWK_HEADER}"`
-
 #### PUT /{ip}
 
 Updates information about an IP address or network.
@@ -249,39 +237,10 @@ Returns a hashmap of violation type to penalty loaded from the config e.g.
 
 Example: `curl -X GET http://tigerblood/violations`
 
-#### PUT /violations/{ip}
-
-Sets or updates the reputation for an IP address or network to the
-reputation for the violation type found in the config if it is lower
-than the current reputation.
-
-
-* Request parameters: None
-* Request body: a JSON object with the schema:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "Violation": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "Violation"
-  ]
-}
-```
-
-* Response body: None
-* Successful response status code: 204 No Content
-
-Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
-
 #### PUT /violations/
 
 Sets or updates the reputations for multiple IP addresses or networks
-with provided violation types like `PUT /violations/{ip}` for each IP.
+with provided violation types.
 
 Returns 409 Conflict for requests with duplicate IPs.
 
@@ -310,7 +269,7 @@ A JSON object with the schema (example below):
   },
   "required": [
     "Violation",
-	"ip"
+    "ip"
   ]
 }]
 ```
@@ -335,17 +294,17 @@ A JSON object with the schema (example below):
     "Entry": {
       "type": "object",
       "properties": {
-         "Violation": {
-           "type": "string"
-         },
-         "IP": {
-           "type": "string"
-         }
+        "Violation": {
+          "type": "string"
+        },
+        "IP": {
+          "type": "string"
+        }
       }
-	},
-	"Msg": {
+    },
+    "Msg": {
       "type": "string"
-	}
+    }
   }
 }
 ```

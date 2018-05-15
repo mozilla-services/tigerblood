@@ -5,21 +5,16 @@ import (
 	"fmt"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
-	"go.mozilla.org/mozlogrus"
-	"strings"
 	"sync"
 	"time"
 )
-
-func init() {
-	mozlogrus.Enable("tigerblood")
-}
 
 // CheckViolationError postgres violation error
 type CheckViolationError struct {
 	Inner *pq.Error
 }
 
+// Error returns the inner error string
 func (e CheckViolationError) Error() string {
 	return e.Inner.Error()
 }
@@ -29,6 +24,7 @@ type DuplicateKeyError struct {
 	Inner *pq.Error
 }
 
+// Error returns the inner error string
 func (e DuplicateKeyError) Error() string {
 	return e.Inner.Error()
 }
@@ -47,7 +43,7 @@ type DB struct {
 	wait                 *sync.WaitGroup
 }
 
-// ReputationEntry an (IP, Reputation) entry
+// ReputationEntry is an (IP, Reputation) entry
 type ReputationEntry struct {
 	IP         string // The IP address for the entry
 	Reputation uint   // The reputation score
@@ -75,7 +71,7 @@ func checkConnection(db *DB) {
 		var one uint
 		err := db.QueryRow("SELECT 1").Scan(&one)
 		if err != nil {
-			log.Fatal("Database connection failed:", err)
+			log.Fatalf("Database connection failed: %s", err)
 		}
 		if one != 1 {
 			log.Fatal("Apparently the database doesn't know the meaning of one anymore. Crashing.")
@@ -232,104 +228,68 @@ func (db DB) emptyExceptionTable() error {
 	return err
 }
 
-// InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, and if it already exists, it updates it
-func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
-	exec := db.Exec
+// InsertOrUpdateReputationEntry inserts a single ReputationEntry into the database, or if it already
+// exists it updates it
+func (db DB) InsertOrUpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) (ret uint, err error) {
+	query := db.QueryRow
 	if tx != nil {
-		exec = tx.Exec
+		query = tx.QueryRow
 	}
-	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
-		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip)"+
-		"ON CONFLICT (ip) DO UPDATE SET reputation = $2, reviewed = $3;", entry.IP,
-		entry.Reputation, entry.Reviewed)
-	return err
+	err = query("INSERT INTO reputation (ip, reputation, reviewed) "+
+		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip) "+
+		"ON CONFLICT (ip) DO UPDATE SET reputation = $2, reviewed = $3 "+
+		"RETURNING reputation;", entry.IP,
+		entry.Reputation, entry.Reviewed).Scan(&ret)
+	if pqErr, ok := err.(*pq.Error); ok {
+		if pqErr.Code == pgCheckViolationErrorCode {
+			return 0, CheckViolationError{pqErr}
+		}
+	}
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, ErrNoRowsAffected
+		}
+		return 0, err
+	}
+	return ret, nil
 }
 
 // InsertOrUpdateReputationPenalties applies a reputationPenalty to the
 // default reputation (100) and inserts a reputationEntry or updates
-// an reputationEntry with the penalty
-func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string, reputationPenalties []uint) error {
-	exec := db.Exec
+// a reputationEntry with the penalty
+func (db DB) InsertOrUpdateReputationPenalties(tx *sql.Tx, ips []string,
+	reputationPenalties []uint) (ret []uint, err error) {
+	query := db.QueryRow
 	if tx != nil {
-		exec = tx.Exec
+		query = tx.QueryRow
+	}
+	if len(ips) != len(reputationPenalties) {
+		return ret, fmt.Errorf("IP and penalty list mismatched length")
 	}
 
-	vals := []interface{}{}
-	index := 0
-
-	sqlStr := "WITH x AS (SELECT * FROM unnest(array["
-
-	for i, ip := range ips {
-		sqlStr += fmt.Sprintf("$%d,", i+1)
-		vals = append(vals, ip)
-		index = i + 1
-	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-
-	sqlStr += "]::ip4r[], array["
-	for i, p := range reputationPenalties {
-		sqlStr += fmt.Sprintf("100 - $%d,", index+i+1)
-		vals = append(vals, p)
-	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-	sqlStr += "]) AS x(t0, t1) WHERE NOT EXISTS (SELECT 1 FROM exception WHERE t0 <<= ip)) " +
-		"INSERT INTO reputation (ip, reputation) SELECT x.t0, x.t1 FROM x " +
-		"ON CONFLICT (ip) DO UPDATE SET reputation = " +
-		"GREATEST(0, LEAST(excluded.reputation, reputation.reputation - (100 - excluded.reputation)));"
-
-	log.Debugf("sql: %s %s", sqlStr, vals)
-	_, err := exec(sqlStr, vals...)
-	return err
-}
-
-// InsertReputationEntry inserts a single ReputationEntry into the database
-func (db DB) InsertReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
-	exec := db.Exec
-	if tx != nil {
-		exec = tx.Exec
-	}
-	_, err := exec("INSERT INTO reputation (ip, reputation, reviewed) "+
-		"SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip);",
-		entry.IP, entry.Reputation, entry.Reviewed)
-
-	if pqErr, ok := err.(*pq.Error); ok {
-		switch pqErr.Code {
-		case pgCheckViolationErrorCode:
-			return CheckViolationError{pqErr}
-		case pgDuplicateKeyErrorCode:
-			return DuplicateKeyError{pqErr}
+	var vnew uint
+	for i := range ips {
+		vip, vpenalty := ips[i], reputationPenalties[i]
+		err := query("INSERT INTO reputation (ip, reputation) "+
+			"SELECT $1, 100 - $2 WHERE NOT EXISTS (SELECT 1 FROM exception WHERE $1 <<= ip) "+
+			"ON CONFLICT (ip) DO UPDATE SET "+
+			"reputation = GREATEST(0, LEAST(excluded.reputation, reputation.reputation - "+
+			"(100 - excluded.reputation))) RETURNING reputation",
+			vip, vpenalty).Scan(&vnew)
+		if err != nil {
+			if err != sql.ErrNoRows {
+				return ret, err
+			}
+			// Otherwise it was excluded by an exception, so just mark it as 100
+			ret = append(ret, 100)
 		}
+		ret = append(ret, vnew)
 	}
-	return err
+	return ret, nil
 }
 
-// UpdateReputationEntry updates a single ReputationEntry on the database
-func (db DB) UpdateReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
-	exec := db.Exec
-	if tx != nil {
-		exec = tx.Exec
-	}
-	result, err := exec("UPDATE reputation SET reputation = $2, reviewed = $3 WHERE ip = $1 RETURNING ip;",
-		entry.IP, entry.Reputation, entry.Reviewed)
-	if pqErr, ok := err.(*pq.Error); ok {
-		if pqErr.Code == pgCheckViolationErrorCode {
-			return CheckViolationError{pqErr}
-		}
-	}
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return ErrNoRowsAffected
-	}
-	return nil
-}
-
-// SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP passed as a parameter.
+// SelectSmallestMatchingSubnet returns the smallest subnet in the database that contains the IP
+// passed as a parameter.
 func (db DB) SelectSmallestMatchingSubnet(ip string) (ReputationEntry, error) {
 	var entry ReputationEntry
 	err := db.reputationSelectStmt.QueryRow(ip).Scan(&entry.IP, &entry.Reputation, &entry.Reviewed)
@@ -346,7 +306,8 @@ func (db DB) DeleteReputationEntry(tx *sql.Tx, entry ReputationEntry) error {
 	return err
 }
 
-// InsertOrUpdateExceptionEntry inserts a single ExceptionEntry into the database, and if it already exists, it updates it
+// InsertOrUpdateExceptionEntry inserts a single ExceptionEntry into the database, and if it already exists,
+// it updates it
 func (db DB) InsertOrUpdateExceptionEntry(tx *sql.Tx, entry ExceptionEntry) error {
 	exec := db.Exec
 	if tx != nil {

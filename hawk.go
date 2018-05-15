@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	log "github.com/sirupsen/logrus"
 	"go.mozilla.org/hawk"
-	"go.mozilla.org/mozlogrus"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -13,13 +12,9 @@ import (
 	"time"
 )
 
-// HawkData is hawk config data (.credentials is a map of Hawk IDs to passwords)
+// HawkData is hawk config data (credentials is a map of Hawk IDs to passwords)
 type HawkData struct {
 	credentials map[string]string
-}
-
-func init() {
-	mozlogrus.Enable("tigerblood")
 }
 
 // NewHawkData returns hawk config data for a map of hawk creds
@@ -40,16 +35,15 @@ func HawkAuth(r *http.Request, m *HawkData) bool {
 		case *hawk.CredentialError:
 			log.WithFields(log.Fields{"errno": HawkCredError}).Warn(err)
 		case hawk.AuthError:
-			{
-				switch err.(hawk.AuthError) {
-				case hawk.ErrNoAuth:
-					log.WithFields(log.Fields{"errno": HawkErrNoAuth}).Warn(err)
-				case hawk.ErrReplay:
-					log.WithFields(log.Fields{"errno": HawkReplayError}).Warn(err)
-				}
+			switch err.(hawk.AuthError) {
+			case hawk.ErrNoAuth:
+				log.WithFields(log.Fields{"errno": HawkErrNoAuth}).Warn(err)
+			case hawk.ErrReplay:
+				log.WithFields(log.Fields{"errno": HawkReplayError}).Warn(err)
 			}
 		default:
-			log.WithFields(log.Fields{"errno": HawkOtherAuthError}).Warnf("other hawk auth error: %s", err)
+			log.WithFields(log.Fields{"errno": HawkOtherAuthError}).Warnf("other hawk auth error: %s",
+				err)
 		}
 		return false
 	}
@@ -57,7 +51,8 @@ func HawkAuth(r *http.Request, m *HawkData) bool {
 	// Validate the header MAC and skew
 	validationError := auth.Valid()
 	if validationError != nil {
-		log.WithFields(log.Fields{"errno": HawkValidationError}).Warnf("hawk validation error: %s", validationError)
+		log.WithFields(log.Fields{"errno": HawkValidationError}).Warnf("hawk validation error: %s",
+			validationError)
 		return false
 	}
 
@@ -66,11 +61,13 @@ func HawkAuth(r *http.Request, m *HawkData) bool {
 	contentType := r.Header.Get("Content-Type")
 	if r.Method != "GET" && r.Method != "DELETE" && contentType == "" {
 		log.WithFields(log.Fields{"errno": HawkMissingContentType}).Warn("hawk: missing content-type")
+		return false
 	}
 
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil && contentType != "" {
-		log.WithFields(log.Fields{"errno": HawkMissingContentType}).Warnf("hawk: invalid content-type %s", err)
+		log.WithFields(log.Fields{"errno": HawkMissingContentType}).Warnf("hawk: invalid content-type %s",
+			err)
 		return false
 	}
 
@@ -88,6 +85,7 @@ func HawkAuth(r *http.Request, m *HawkData) bool {
 		return false
 	}
 
+	log.WithFields(log.Fields{"id": auth.Credentials.ID}).Infof("hawk: accepted request")
 	return true
 }
 

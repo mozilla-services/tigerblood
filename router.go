@@ -42,7 +42,7 @@ func NewRouter() *mux.Router {
 	return router
 }
 
-// Route a struct for holding a route config
+// Route is a struct for holding a route config
 type Route struct {
 	Name        string
 	Method      string
@@ -50,17 +50,17 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
-// Routes an array of Routes for configuring a Router
+// Routes is an array of Routes for configuring a Router
 type Routes []Route
 
-// UnauthedRoutes routes that don't require hawk auth
+// UnauthedRoutes are routes that don't require hawk auth
 var UnauthedRoutes = map[string]bool{
 	"/__lbheartbeat__": true,
 	"/__heartbeat__":   true,
 	"/__version__":     true,
 }
 
-// UnauthedDebugRoutes profiling routes that don't require hawk auth
+// UnauthedDebugRoutes are profiling routes that don't require hawk auth
 var UnauthedDebugRoutes = map[string]bool{
 	"/debug/pprof/":             true,
 	"/debug/pprof/cmdline":      true,
@@ -111,22 +111,11 @@ var routes = Routes{
 		MultiUpsertReputationByViolationHandler,
 	},
 	Route{
-		"UpsertReputationByViolation",
-		"PUT",
-		"/violations/{type:[[:punct:]\\w]{1,255}}", // include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
-		UpsertReputationByViolationHandler,
-	},
-	Route{
 		"ReadReputation",
 		"GET",
-		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}", // see above note for all punct for IPs w/ colons e.g. 2001:db8::/32
+		// include all :punct: since gorilla/mux barfed trying to limit it to `:` (or as \x3a)
+		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}",
 		ReadReputationHandler,
-	},
-	Route{
-		"CreateReputation",
-		"POST",
-		"/",
-		CreateReputationHandler,
 	},
 	Route{
 		"UpdateReputation",

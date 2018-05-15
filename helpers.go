@@ -8,6 +8,9 @@ import (
 
 // IPAddressFromHTTPPath takes a HTTP path and returns an IPv4 IP if it's found, or an error if none is found.
 func IPAddressFromHTTPPath(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("Invalid path")
+	}
 	path = path[1:len(path)]
 	ip, network, err := net.ParseCIDR(path)
 	if err != nil {
