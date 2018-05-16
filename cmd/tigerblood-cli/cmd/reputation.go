@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -36,25 +37,29 @@ var reputationCmd = &cobra.Command{
 			viper.GetString("HAWK_ID"),
 			viper.GetString("HAWK_SECRET"))
 		if err != nil {
-			fmt.Printf("Error creating tigerblood client:\n%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error creating tigerblood client: %s\n", err)
 			os.Exit(1)
 		}
 
 		resp, err := client.Reputation(ipaddr)
 		if err != nil {
-			fmt.Printf("Error requesting reputation:\n%s\n", err)
+			if resp != nil && resp.StatusCode == http.StatusNotFound {
+				fmt.Printf("reputation entry not found\n")
+				os.Exit(0)
+			}
+			fmt.Fprintf(os.Stderr, "Error requesting reputation: %s\n", err)
 			os.Exit(1)
 		}
 
 		buf, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("Error reading response body:\n%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error reading response body: %s\n", err)
 			os.Exit(1)
 		}
 		var r tigerblood.ReputationEntry
 		err = json.Unmarshal(buf, &r)
 		if err != nil {
-			fmt.Printf("Error unmarshaling response:\n%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error unmarshaling response: %s\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("%v %v %v\n", r.IP, r.Reputation, r.Reviewed)

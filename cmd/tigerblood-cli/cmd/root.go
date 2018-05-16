@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -16,8 +15,10 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:   "tigerblood-cli",
 	Short: "Command line client for managing IP Reputations",
-	Long: `Command line client for managing IP Reputations. It requires
-the environment variables TIGERBLOOD_HAWK_ID, TIGERBLOOD_HAWK_SECRET, TIGERBLOOD_URL. Example usage:
+	Long: `Command line client for managing IP Reputations. It requires the environment variables
+TIGERBLOOD_HAWK_ID, TIGERBLOOD_HAWK_SECRET, TIGERBLOOD_URL to be set, or a valid config file.
+
+Example usage:
 
 TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localhost:8080/ tigerblood-cli ban 192.8.8.0
 `,
@@ -27,7 +28,7 @@ TIGERBLOOD_HAWK_ID=root TIGERBLOOD_HAWK_SECRET=toor TIGERBLOOD_URL=http://localh
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
@@ -41,14 +42,8 @@ func init() {
 
 	viper.SetEnvPrefix("tigerblood")
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.tigerblood-cli.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
+		"config file (default is $HOME/.tigerblood-cli.yaml)")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -60,7 +55,7 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintf(os.Stderr, "Error getting home directory: %s\n", err)
 			os.Exit(1)
 		}
 
@@ -72,7 +67,10 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
+			os.Exit(1)
+		}
 	}
 }
