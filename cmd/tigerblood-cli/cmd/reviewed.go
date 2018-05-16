@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -43,32 +42,19 @@ var reviewedCmd = &cobra.Command{
 			viper.GetString("HAWK_ID"),
 			viper.GetString("HAWK_SECRET"))
 		if err != nil {
-			fmt.Printf("Error creating tigerblood client:\n%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error creating tigerblood client: %s\n", err)
 			os.Exit(1)
 		}
 
-		resp, err := client.SetReviewed(ipaddr, flag)
+		_, err = client.SetReviewed(ipaddr, flag)
 		if err != nil {
-			fmt.Printf("Error setting reviewed flag:\n%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error setting reviewed flag: %s\n", err)
 			os.Exit(1)
 		}
-		if resp.StatusCode != http.StatusOK {
-			fmt.Printf("Bad response setting reviewed flag:\n%s\n", resp)
-			os.Exit(1)
-		}
+		fmt.Printf("Flag for %s set to %t\n", ipaddr, flag)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(reviewedCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// banCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// banCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

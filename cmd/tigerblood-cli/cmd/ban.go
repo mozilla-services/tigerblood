@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -35,33 +34,19 @@ var banCmd = &cobra.Command{
 			viper.GetString("HAWK_ID"),
 			viper.GetString("HAWK_SECRET"))
 		if err != nil {
-			fmt.Printf("Error creating tigerblood client:\n%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error creating tigerblood client: %s\n", err)
 			os.Exit(1)
 		}
 
-		resp, err := client.BanIP(cidr)
+		_, err = client.BanIP(cidr)
 		if err != nil {
-			fmt.Printf("Error banning IP:\n%s\n", err)
-			os.Exit(1)
-		} else if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
-			fmt.Printf("Banned %s on %s\n", cidr, url)
-		} else {
-			fmt.Printf("Bad response banning IP:\n%s\n", resp)
+			fmt.Fprintf(os.Stderr, "Error banning IP: %s\n", err)
 			os.Exit(1)
 		}
+		fmt.Printf("Banned %s on %s\n", cidr, url)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(banCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// banCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// banCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
