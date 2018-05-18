@@ -126,6 +126,99 @@ func writeEntryErrorResponse(w http.ResponseWriter, entryIndex int, entry IPViol
 	return
 }
 
+// UpsertReputationByViolationHandler takes a JSON body from the http request
+// and either creates a new reputation entry for the IP address or applies the
+// violation to an existing entry.
+//
+// The HTTP request path must contain the IP address being updated in a similar
+// manner to the reputation PUT endpoint.
+func UpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
+	ip, err := IPAddressFromHTTPPath(r.URL.Path)
+	if err != nil {
+		log.WithFields(log.Fields{"errno": MissingIPError}).Infof(DescribeErrno(MissingIPError))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !IsValidReputationCIDROrIP(ip) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.WithFields(log.Fields{"errno": InvalidIPError}).Infof(DescribeErrno(InvalidIPError), ip)
+		return
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.WithFields(log.Fields{"errno": BodyReadError}).Warnf(DescribeErrno(BodyReadError), err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	type violationBody struct {
+		Violation string
+	}
+	var bodyJSON violationBody
+	err = json.Unmarshal(body, &bodyJSON)
+	if err != nil {
+		log.WithFields(log.Fields{"errno": JSONUnmarshalError}).Warnf(DescribeErrno(JSONUnmarshalError),
+			err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if db == nil {
+		log.WithFields(log.Fields{"errno": MissingDB}).Warnf(DescribeErrno(MissingDB))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	entry := IPViolationEntry{
+		IP:        ip,
+		Violation: bodyJSON.Violation,
+	}
+	penalty, errno := ValidateIPViolationEntryAndGetPenalty(entry)
+	if errno > 0 {
+		switch errno {
+		case MissingIPError:
+			writeEntryErrorResponse(w, 0, entry, http.StatusBadRequest,
+				fmt.Sprintf(DescribeErrno(MissingIPError)))
+		case MissingViolations:
+			writeEntryErrorResponse(w, 0, entry, http.StatusBadRequest,
+				DescribeErrno(MissingViolations))
+		case MissingViolationTypeError:
+			writeEntryErrorResponse(w, 0, entry, http.StatusBadRequest,
+				fmt.Sprintf(DescribeErrno(MissingViolationTypeError), entry.Violation))
+		case InvalidIPError:
+			writeEntryErrorResponse(w, 0, entry, http.StatusBadRequest,
+				fmt.Sprintf(DescribeErrno(InvalidIPError), entry.IP))
+		case InvalidViolationTypeError:
+			writeEntryErrorResponse(w, 0, entry, http.StatusBadRequest,
+				fmt.Sprintf(DescribeErrno(InvalidViolationTypeError), entry.Violation))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		return
+	}
+
+	ips, penalties := make([]string, 1), make([]uint, 1)
+	ips[0] = ip
+	penalties[0] = penalty
+
+	setrep, err := db.InsertOrUpdateReputationPenalties(nil, ips, penalties)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"errno": DBError,
+		}).Warnf("Could not update reputation entry by violation: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.WithFields(log.Fields{
+		"ip":         ips[0],
+		"penalty":    penalties[0],
+		"violation":  entry.Violation,
+		"reputation": setrep[0],
+	}).Infof("violation applied")
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // MultiUpsertReputationByViolationHandler creates or update reputation entries for many IPViolationEntries
 func MultiUpsertReputationByViolationHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)

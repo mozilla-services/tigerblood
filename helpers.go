@@ -11,23 +11,28 @@ func IPAddressFromHTTPPath(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("Invalid path")
 	}
-	path = path[1:len(path)]
-	ip, network, err := net.ParseCIDR(path)
-	if err != nil {
-		if strings.Contains(path, "/") {
-			return "", fmt.Errorf("Error getting IP from HTTP path: %s", err)
-		}
-		ip = net.ParseIP(path)
-		if ip == nil {
-			return "", fmt.Errorf("Error getting IP from HTTP path: %s", err)
-		}
-		network = &net.IPNet{}
+	n := &net.IPNet{}
+	comp := strings.Split(path, "/")
+	ip := net.ParseIP(comp[len(comp)-1])
+	if ip != nil {
 		if ip.To4() != nil {
-			network.Mask = net.CIDRMask(32, 32)
+			n.Mask = net.CIDRMask(32, 32)
 		} else if ip.To16() != nil {
-			network.Mask = net.CIDRMask(128, 128)
+			n.Mask = net.CIDRMask(128, 128)
+		} else {
+			return "", fmt.Errorf("Error getting IP from HTTP path")
 		}
+		n.IP = ip
+		return n.String(), nil
+
 	}
-	network.IP = ip
-	return network.String(), nil
+	// Otherwise, treat as CIDR
+	if len(comp) < 2 {
+		return "", fmt.Errorf("Error getting IP from HTTP path")
+	}
+	ip, n, err := net.ParseCIDR(strings.Join(comp[len(comp)-2:len(comp)], "/"))
+	if err != nil {
+		return "", fmt.Errorf("Error getting IP from HTTP path: %s", err)
+	}
+	return n.String(), nil
 }
