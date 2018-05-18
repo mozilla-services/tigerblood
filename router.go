@@ -118,6 +118,12 @@ var routes = Routes{
 		ReadReputationHandler,
 	},
 	Route{
+		"UpsertReputationByViolation",
+		"PUT",
+		"/violations/{type:[[:punct:]\\w]{1,255}}",
+		UpsertReputationByViolationHandler,
+	},
+	Route{
 		"UpdateReputation",
 		"PUT",
 		"/{ip:[[:punct:]\\/\\.\\w]{1,128}}",

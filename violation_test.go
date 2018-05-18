@@ -45,6 +45,97 @@ func TestListViolationsMissingViolationsMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
 }
 
+func TestInsertReputationByViolation(t *testing.T) {
+	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
+	assert.True(t, found)
+	db, err := NewDB(dsn)
+	assert.Nil(t, err)
+	err = db.EmptyTables()
+	assert.Nil(t, err)
+
+	testViolations := map[string]uint{
+		"Test:Violation":      90,
+		"Test:Violation.name": 90,
+	}
+
+	SetDB(db)
+	SetMaxEntries(100)
+	SetViolationPenalties(testViolations)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+
+	t.Run("known", func(t *testing.T) {
+		// known violation type is subtracted from default reputation
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1",
+			strings.NewReader(`{"Violation": "Test:Violation.name"}`)))
+		assert.Equal(t, http.StatusNoContent, recorder.Code)
+
+		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
+		assert.Nil(t, err)
+		assert.Equal(t, uint(10), entry.Reputation)
+	})
+
+	t.Run("cidr", func(t *testing.T) {
+		// known violation type is subtracted from default reputation
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.0/24",
+			strings.NewReader(`{"Violation": "Test:Violation.name"}`)))
+		assert.Equal(t, http.StatusNoContent, recorder.Code)
+
+		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
+		assert.Nil(t, err)
+		assert.Equal(t, uint(10), entry.Reputation)
+	})
+
+	t.Run("unknown", func(t *testing.T) {
+		// unknown violation type returns 400
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1",
+			strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		// invalid violation type returns 400
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1",
+			strings.NewReader(`{"Violation": "UnknownViolation!"}`)))
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("invalid-urls", func(t *testing.T) {
+		// test parsing invalid URL
+		recorder := httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations",
+			strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
+
+		recorder = httptest.ResponseRecorder{}
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations////",
+			strings.NewReader(`{"Violation": "UnknownViolation"}`)))
+		assert.Equal(t, http.StatusMovedPermanently, recorder.Code) // gorilla/mux redirect
+	})
+
+	assert.Nil(t, db.Close())
+}
+
+func TestInsertReputationByViolationRequiresDB(t *testing.T) {
+	testViolations := map[string]uint{
+		"TestViolation": 90,
+	}
+	SetViolationPenalties(testViolations)
+
+	SetDB(nil)
+
+	h := HandleWithMiddleware(NewRouter(), []Middleware{})
+
+	recorder := httptest.ResponseRecorder{}
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/192.168.0.1",
+		strings.NewReader(`{"Violation": "TestViolation"}`)))
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+}
+
 func TestMultiInsertReputationByViolation(t *testing.T) {
 	dsn, found := os.LookupEnv("TIGERBLOOD_DSN")
 	assert.True(t, found)
@@ -78,7 +169,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 
 	t.Run("too many ips", func(t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.1.1", "Violation": "Test:Violation"}, {"ip": "192.168.2.1", "Violation": "Test:Violation"}, {"ip": "192.168.3.1", "Violation": "Test:Violation2"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.1.1", "Violation": "Test:Violation"}, {"ip": "192.168.2.1", "Violation": "Test:Violation"}, {"ip": "192.168.3.1", "Violation": "Test:Violation2"}]`)))
 		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
 
 		err = db.EmptyTables()
@@ -88,21 +180,24 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 	t.Run("known violation missing ip", func(t *testing.T) {
 		// known violation type is subtracted from default reputation
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
 
 	t.Run("known violation invalid ip", func(t *testing.T) {
 		// known violation type is subtracted from default reputation
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192...168.0.1", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192...168.0.1", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
 
 	t.Run("known violation single ip", func(t *testing.T) {
 		// known violation type is subtracted from default reputation
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusNoContent, recorder.Code)
 
 		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -115,7 +210,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 
 	t.Run("known violation type many ips", func(t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.100", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.100", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusNoContent, recorder.Code)
 
 		entry, err := db.SelectSmallestMatchingSubnet("192.168.0.1")
@@ -132,13 +228,15 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 
 	t.Run("duplicate entry returns conflict", func(t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusConflict, recorder.Code)
 	})
 
 	t.Run("duplicate ip different violation type returns conflict", func(t *testing.T) {
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.1", "Violation": "Test:Violation2"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}, {"ip": "192.168.0.1", "Violation": "Test:Violation2"}]`)))
 		assert.Equal(t, http.StatusConflict, recorder.Code)
 	})
 
@@ -146,7 +244,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		h := HandleWithMiddleware(NewRouter(), []Middleware{})
-		req := httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Unknown"}]`))
+		req := httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Unknown"}]`))
 		h.ServeHTTP(recorder, req)
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 
@@ -161,7 +260,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 	t.Run("invalid violation type", func(t *testing.T) {
 		// invalid violation type returns 400
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "InvalidViolation!"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "InvalidViolation!"}]`)))
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
 
@@ -169,7 +269,8 @@ func TestMultiInsertReputationByViolation(t *testing.T) {
 		SetViolationPenalties(nil)
 
 		recorder := httptest.ResponseRecorder{}
-		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
+		h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+			strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "Test:Violation"}]`)))
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
 
@@ -188,6 +289,7 @@ func TestMultiInsertReputationByViolationRequiresDB(t *testing.T) {
 	h := HandleWithMiddleware(NewRouter(), []Middleware{})
 
 	recorder := httptest.ResponseRecorder{}
-	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/", strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "TestViolation"}]`)))
+	h.ServeHTTP(&recorder, httptest.NewRequest("PUT", "/violations/",
+		strings.NewReader(`[{"ip": "192.168.0.1", "Violation": "TestViolation"}]`)))
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 }

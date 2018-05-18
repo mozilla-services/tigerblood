@@ -237,6 +237,32 @@ Returns a hashmap of violation type to penalty loaded from the config e.g.
 
 Example: `curl -X GET http://tigerblood/violations`
 
+#### PUT /violations/{ip}
+
+Applies a violation penalty to the provided IP address or network.
+
+* Request parameters: None
+* Request body: a JSON object with the schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "Violation": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "Violation"
+  ]
+}
+```
+
+* Response body: None
+* Successful response status code: 204 No Content
+
+Example: `curl -d '{"Violation": "password-check-rate-limited-exceeded"}' -X PUT http://tigerblood/violations/240.0.0.1 --header "Authorization: {YOUR_HAWK_HEADER}"`
+
 #### PUT /violations/
 
 Sets or updates the reputations for multiple IP addresses or networks
